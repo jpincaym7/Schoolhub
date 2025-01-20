@@ -1,0 +1,125 @@
+/* static/css/modules.css */
+
+/* Animaciones para las cards */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.module-card {
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* Efectos hover mejorados */
+.hover-scale {
+    transition: all 0.3s ease;
+}
+
+.hover-scale:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* Estilos para el switch de estado */
+.switch-toggle {
+    transition: background-color 0.3s ease;
+}
+
+.switch-toggle:checked {
+    background-color: #2563eb;
+}
+
+/* Estilos para el modal */
+.modal-backdrop {
+    backdrop-filter: blur(5px);
+    transition: all 0.3s ease;
+}
+
+.modal-content {
+    transform-origin: center;
+    transition: all 0.3s ease;
+}
+
+.modal-enter {
+    opacity: 0;
+    transform: scale(0.9);
+}
+
+.modal-enter-active {
+    opacity: 1;
+    transform: scale(1);
+}
+
+/* Estilos para los iconos en las cards */
+.module-icon {
+    transition: all 0.3s ease;
+}
+
+.module-card:hover .module-icon {
+    transform: scale(1.1);
+    color: #2563eb;
+}
+
+/* Estilos para los botones de acción */
+.action-button {
+    transition: all 0.2s ease;
+}
+
+.action-button:hover {
+    transform: scale(1.1);
+}
+
+/* Estilos para el formulario */
+.form-input:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+/* Animación de carga */
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.loading-spinner {
+    animation: spin 1s linear infinite;
+}
+
+/* Estilos para mensajes de validación */
+.error-message {
+    color: #dc2626;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
+
+/* Estilos para tooltips */
+.tooltip {
+    position: relative;
+    display: inline-block;
+}
+
+.tooltip:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 0.5rem;
+    background-color: #1f2937;
+    color: white;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    white-space: nowrap;
+    z-index: 10;
+}
+
+/* Estilos para estados de carga */
+.skeleton-loading {
+    background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+    from { background-position: 200% 0; }
+    to { background-position: -200% 0; }
+}

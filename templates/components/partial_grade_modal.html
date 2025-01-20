@@ -1,0 +1,59 @@
+<div id="partial-grade-modal" class="modal hidden">
+    <div class="modal-content">
+        <h2 class="text-xl font-bold mb-4">Calificación Parcial</h2>
+        <form id="partial-grade-form" class="space-y-4">
+            {% csrf_token %}
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Estudiante</label>
+                <select name="student" required class="form-select">
+                    <option value="">Seleccione un estudiante</option>
+                    {% for student in students %}
+                    <option value="{{ student.id }}">{{ student.get_full_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Materia</label>
+                <select name="subject" required class="form-select">
+                    <option value="">Seleccione una materia</option>
+                    {% for subject in subjects %}
+                    <option value="{{ subject.id }}">{{ subject.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Período Académico</label>
+                <select name="academic_period" required class="form-select">
+                    <option value="">Seleccione un período</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Número de Parcial</label>
+                <input type="number" name="partial_number" required min="1" max="3" 
+                       class="form-input" placeholder="Ej: 1">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Nota de Tareas</label>
+                <input type="number" name="homework_score" required min="0" max="10" step="0.1" 
+                       class="form-input" placeholder="Ej: 8.5">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Nota de Participación</label>
+                <input type="number" name="participation_score" required min="0" max="10" step="0.1" 
+                       class="form-input" placeholder="Ej: 9.0">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Nota de Examen</label>
+                <input type="number" name="exam_score" required min="0" max="10" step="0.1" 
+                       class="form-input" placeholder="Ej: 7.5">
+            </div>
+            <div class="flex justify-end space-x-2">
+                <button type="button" onclick="document.getElementById('partial-grade-modal').classList.add('hidden')" 
+                        class="btn-secondary">
+                    Cancelar
+                </button>
+                <button type="submit" class="btn-primary">Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>

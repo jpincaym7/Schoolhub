@@ -1,0 +1,79 @@
+{% extends 'components/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header Section -->
+    <nav class="text-gray-500 text-sm mb-4">
+        <ol class="list-none p-0 inline-flex">
+            <li class="flex items-center">
+                <a href="/subjects/dashboard-subject/" class="hover:text-gray-700">Home</a>
+                <svg class="h-5 w-5 mx-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                </svg>
+            </li>
+            <li class="text-gray-700 font-medium">{{ activity.name }}</li>
+        </ol>
+    </nav>
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800">{{ activity.name }} de {{activity.subject.name}}</h1>
+                <p class="text-gray-600">{{ activity.description }}</p>
+            </div>
+            <div class="text-right">
+                <p class="text-sm text-gray-600">Parcial {{ activity.partial_number }}</p>
+                <p class="text-sm text-gray-600">{{ activity.get_activity_type_display }}</p>
+            </div>
+        </div>
+    </div>
+    <!-- Grades Table -->
+    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+        <div class="p-4 border-b">
+            <div class="flex justify-between items-center">
+                <h2 class="text-lg font-semibold text-gray-800">Calificaciones</h2>
+                <div class="flex space-x-3">
+                    <button id="saveAllBtn" 
+                            class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition">
+                        <i class="fas fa-save mr-2"></i>Guardar Todos
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Estudiante
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Paralelo
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Calificación
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Acciones
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200" id="gradesTableBody">
+                    <!-- Grades will be loaded here dynamically -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Required variables for JavaScript -->
+<script>
+    window.subjectId = {{ activity.subject.id }};
+    window.activityId = {{ activity.id }};
+</script>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/activities.js' %}"></script>
+{% endblock %}

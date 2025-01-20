@@ -1,0 +1,220 @@
+{% extends 'components/base.html' %}
+{% load static %}
+
+{% block title %}Panel de Control - Calificaciones{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="glass-effect rounded-lg p-4 shadow-md">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <!-- Selector de período -->
+            <div class="flex gap-4">
+                <div>
+                    <label for="period-selector" class="block text-sm font-medium text-gray-700 mb-2">
+                        Período Académico
+                    </label>
+                    <select id="period-selector" class="w-full md:w-64 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        {% for period in academic_periods %}
+                            <option value="{{ period.id }}" {% if period.id == current_period.id %}selected{% endif %}>
+                                {{ period }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div>
+                    <label for="quimester-selector" class="block text-sm font-medium text-gray-700 mb-2 hidden">
+                        Quimestre
+                    </label>
+                    <select id="quimester-selector" class="hidden w-full md:w-64 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <option value="1" {% if current_quimester == '1' %}selected{% endif %}>Primer Quimestre</option>
+                        <option value="2" {% if current_quimester == '2' %}selected{% endif %}>Segundo Quimestre</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Selector de estudiantes (si hay más de uno) -->
+            {% if not single_student %}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {% for student_id, data in students_data.items %}
+                <button 
+                    class="student-selector hover-scale p-4 rounded-lg {% if forloop.first %}bg-blue-500 text-white{% else %}bg-white text-gray-700{% endif %} shadow-md transition-all"
+                    data-student-id="{{ student_id }}">
+                    <div class="flex items-center space-x-4">
+                        <img src="{{ '/static/img/9334176.jpg' }}" 
+                             alt="{{ data.student.get_full_name }}"
+                             class="w-12 h-12 rounded-full object-cover">
+                        <div>
+                            <h3 class="font-semibold">{{ data.student.get_full_name }}</h3>
+                            <p class="text-sm">{{ data.student.grade }} - {{ data.student.parallel }}</p>
+                        </div>
+                    </div>
+                </button>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Contenedor principal para cada estudiante -->
+    {% for student_id, data in students_data.items %}
+    <div id="student-{{ student_id }}" class="student-data {% if not single_student and not forloop.first %}hidden{% endif %}">
+        <!-- Resumen del estudiante -->
+        <div class="glass-effect rounded-lg p-6 shadow-md mb-6">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center">
+                <div class="flex items-center space-x-4 mb-4 md:mb-0">
+                    <img src="{{ '/static/img/9334176.jpg' }}" 
+                         alt="{{ data.student.get_full_name }}"
+                         class="w-20 h-20 rounded-full object-cover border-4 border-blue-500">
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-800">{{ data.student.get_full_name }}</h1>
+                        <p class="text-gray-600">{{ data.student.grade }} - {{ data.student.parallel }}</p>
+                        <p class="text-gray-600">{{ data.current_period }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Materias y Calificaciones -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {% for subject_id, subject_data in data.subjects_data.items %}
+            <div class="glass-effect rounded-lg p-6 shadow-md hover-scale">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">{{ subject_data.subject.name }}</h3>
+                
+                <!-- Calificación Quimestral -->
+                {% if subject_data.quimester_grade %}
+                <div class="mb-4 p-3 bg-white rounded-lg">
+                    <p class="text-gray-600">Calificación Quimestral</p>
+                    <p class="text-2xl font-bold {% if subject_data.quimester_grade.final_score >= 7 %}text-green-500{% else %}text-red-500{% endif %}">
+                        {{ subject_data.quimester_grade.final_score }}/10
+                    </p>
+                </div>
+                {% endif %}
+
+                <!-- Parciales del Quimestre -->
+                <div class="space-y-2">
+                    <p class="font-semibold text-gray-700">Parciales:</p>
+                    <div class="grid grid-cols-3 gap-2">
+                        {% for grade in subject_data.partial_grades %}
+                        <div class="text-center p-2 bg-white rounded">
+                            <p class="text-sm text-gray-600">P{{ grade.partial_number }}</p>
+                            <p class="font-bold {% if grade.final_score >= 7 %}text-green-500{% else %}text-red-500{% endif %}">
+                                {{ grade.final_score }}/10
+                            </p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Actividades del Quimestre -->
+                <div class="mt-4">
+                    <p class="font-semibold text-gray-700 mb-2">Actividades:</p>
+                    <div class="max-h-40 overflow-y-auto">
+                        {% for activity in subject_data.activities %}
+                        <div class="flex justify-between items-center p-2 {% cycle 'bg-gray-50' '' %} rounded">
+                            <div class="flex-1">
+                                <span class="text-sm font-medium">{{ activity.name }}</span>
+                                <span class="text-xs text-gray-500 ml-2">(P{{ activity.partial_number }})</span>
+                            </div>
+                            <span class="font-bold {% if activity.score >= 7 %}text-green-500{% else %}text-red-500{% endif %}">
+                                {{ activity.score }}/10
+                            </span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Comportamiento -->
+        {% if data.behavior_summary %}
+        <div class="glass-effect rounded-lg p-6 shadow-md mt-6">
+            <h3 class="text-xl font-bold text-gray-800 mb-4">Comportamiento</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {% for partial in data.behavior_summary.partial_summaries %}
+                <div class="bg-white p-4 rounded-lg shadow">
+                    <h4 class="font-semibold mb-2">Parcial {{ partial.partial }}</h4>
+                    <div class="space-y-2">
+                        <p class="text-green-500">Positivos: {{ partial.positive }}</p>
+                        <p class="text-red-500">Negativos: {{ partial.negative }}</p>
+                        <p class="text-gray-500">Neutrales: {{ partial.neutral }}</p>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const periodSelector = document.getElementById('period-selector');
+        const quimesterSelector = document.getElementById('quimester-selector');
+        
+        function updateURL() {
+            let url = window.location.href;
+            url = updateQueryStringParameter(url, 'period_id', periodSelector.value);
+            url = updateQueryStringParameter(url, 'quimester', quimesterSelector.value);
+            window.location.href = url;
+        }
+    
+        if (periodSelector) {
+            periodSelector.addEventListener('change', updateURL);
+        }
+    
+        if (quimesterSelector) {
+            quimesterSelector.addEventListener('change', updateURL);
+        }
+
+    // Manejador de selectores de estudiantes
+    const studentSelectors = document.querySelectorAll('.student-selector');
+    if (studentSelectors.length > 1) {
+        studentSelectors.forEach(selector => {
+            selector.addEventListener('click', function() {
+                // Actualizar estilos de los selectores
+                studentSelectors.forEach(s => {
+                    s.classList.remove('bg-blue-500', 'text-white');
+                    s.classList.add('bg-white', 'text-gray-700');
+                });
+                this.classList.remove('bg-white', 'text-gray-700');
+                this.classList.add('bg-blue-500', 'text-white');
+
+                // Mostrar/ocultar datos del estudiante
+                const studentId = this.dataset.studentId;
+                document.querySelectorAll('.student-data').forEach(data => {
+                    data.classList.add('hidden');
+                });
+                document.getElementById(`student-${studentId}`).classList.remove('hidden');
+            });
+        });
+    }
+
+    // Función auxiliar para actualizar parámetros URL
+    function updateQueryStringParameter(uri, key, value) {
+        const re = new RegExp("([?&])" + key + "=.*?(&|$)", "i");
+        const separator = uri.indexOf('?') !== -1 ? "&" : "?";
+        if (uri.match(re)) {
+            return uri.replace(re, '$1' + key + "=" + value + '$2');
+        }
+        return uri + separator + key + "=" + value;
+    }
+
+    // Animación para hover-scale
+    document.querySelectorAll('.hover-scale').forEach(element => {
+        element.addEventListener('mouseover', function() {
+            this.style.transform = 'scale(1.02)';
+            this.style.transition = 'transform 0.2s ease';
+        });
+        
+        element.addEventListener('mouseout', function() {
+            this.style.transform = 'scale(1)';
+        });
+    });
+});
+</script>
+{% endblock %}

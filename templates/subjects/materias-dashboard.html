@@ -1,0 +1,223 @@
+{% extends 'components/base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<style>
+    .dashboard-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+
+    .dashboard-title {
+        text-align: center;
+        color: #2c3e50;
+        margin-bottom: 2rem;
+        font-size: 2rem;
+    }
+
+    .students-container {
+        display: flex;
+        flex-direction: column;
+        gap: 2rem;
+    }
+
+    .student-section {
+        background: #fff;
+        border-radius: 10px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+
+    .student-header {
+        background: #f8f9fa;
+        padding: 1.5rem;
+        border-bottom: 1px solid #e9ecef;
+    }
+
+    .student-info {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .student-photo {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+
+    .subjects-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 1.5rem;
+        padding: 1.5rem;
+    }
+
+    .subject-card {
+        background: #ffffff;
+        border-radius: 8px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        border: 1px solid #e9ecef;
+        transition: transform 0.2s ease;
+    }
+
+    .subject-card:hover {
+        transform: translateY(-2px);
+    }
+
+    .subject-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+
+    .subject-code {
+        background: #e9ecef;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.875rem;
+    }
+
+    .teacher-info {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin: 1rem 0;
+        padding: 1rem;
+        background: #f8f9fa;
+        border-radius: 6px;
+    }
+
+    .teacher-photo {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+
+    .teacher-details {
+        flex-grow: 1;
+    }
+
+    .teacher-name {
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+    }
+
+    .teacher-email {
+        font-size: 0.875rem;
+        color: #6c757d;
+    }
+
+    .subject-details {
+        margin-top: 1rem;
+        font-size: 0.9rem;
+    }
+
+    .subject-details p {
+        margin: 0.5rem 0;
+    }
+
+    @media (max-width: 768px) {
+        .subjects-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .student-info {
+            flex-direction: column;
+            text-align: center;
+        }
+    }
+</style>
+{% endblock extra_css %}
+
+{% block content %}
+<div class="dashboard-container">
+    <h1 class="dashboard-title">Panel de Materias</h1>
+    
+    <!-- Contenedor principal para los estudiantes -->
+    <div class="students-container">
+        {% for student, subjects in student_subjects.items %}
+            <div class="student-section">
+                <div class="student-header">
+                    <div class="student-info">
+                        {% if student.photo %}
+                            <img src="{{ student.photo.url }}" alt="Foto de {{ student.get_full_name }}" class="student-photo">
+                        {% else %}
+                            <img src="{% static 'img/9334176.jpg' %}" alt="Foto por defecto" class="student-photo">
+                        {% endif %}
+                        <h2>{{ student.get_full_name }}</h2>
+                        <p>Grado: {{ student.grade }} "{{ student.parallel }}"</p>
+                    </div>
+                </div>
+
+                <!-- Contenedor de materias para cada estudiante -->
+                <div class="subjects-grid">
+                    {% for subject in subjects %}
+                        <div class="subject-card">
+                            <div class="subject-header">
+                                <h3>{{ subject.name }}</h3>
+                                <span class="subject-code">{{ subject.code }}</span>
+                            </div>
+                            
+                            <div class="teacher-info">
+                                {% if subject.teacher.photo %}
+                                    <img src="{{ subject.teacher.photo.url }}" alt="Foto de {{ subject.teacher.get_full_name }}" class="teacher-photo">
+                                {% else %}
+                                    <img src="{% static 'img/9334176.jpg' %}" alt="Foto por defecto" class="teacher-photo">
+                                {% endif %}
+                                <div class="teacher-details">
+                                    <p class="teacher-name">{{ subject.teacher.get_full_name }}</p>
+                                    <p class="teacher-email">{{ subject.teacher.email }}</p>
+                                </div>
+                            </div>
+
+                            <div class="subject-details">
+                                <p><strong>Créditos:</strong> {{ subject.credits }}</p>
+                            </div>
+                        </div>
+                    {% empty %}
+                        <p class="no-subjects">No hay materias asignadas para este estudiante.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        {% empty %}
+            <p class="no-students">No hay estudiantes registrados bajo su tutela.</p>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Función para filtrar materias (si se implementa un buscador)
+    const filterSubjects = (searchTerm) => {
+        const subjectCards = document.querySelectorAll('.subject-card');
+        
+        subjectCards.forEach(card => {
+            const subjectName = card.querySelector('h3').textContent.toLowerCase();
+            const teacherName = card.querySelector('.teacher-name').textContent.toLowerCase();
+            
+            if (subjectName.includes(searchTerm.toLowerCase()) || 
+                teacherName.includes(searchTerm.toLowerCase())) {
+                card.style.display = 'block';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    };
+
+    // Función para mostrar/ocultar detalles de la materia (opcional)
+    const subjectCards = document.querySelectorAll('.subject-card');
+    subjectCards.forEach(card => {
+        card.addEventListener('click', function() {
+            this.classList.toggle('expanded');
+        });
+    });
+});
+</script>
+{% endblock extra_js %}

@@ -1,0 +1,53 @@
+from apps.students.models import Student  # Reemplaza 'myapp' con el nombre de tu aplicación
+from django.utils import timezone
+
+# Datos de los estudiantes
+students_data = [
+    ("ACOSTA VERA", "ELIZABETH NATALY", "20230001", "2005-03-15"),
+    ("ALTAMIRANO LANDA", "LINNETTE SCARLE", "20230002", "2005-04-25"),
+    ("ALVARADO MICOLTA", "MARCIA ESTHER", "20230003", "2005-06-10"),
+    ("AVECILLAS VILLALOBOS", "EDDY MARCELO", "20230004", "2005-07-05"),
+    ("BALLADARES ANGULO", "HALLY", "20230005", "2005-08-18"),
+    ("BARCO ESPINOZA", "KEILA ASENAT", "20230006", "2005-09-25"),
+    ("BENALCAZAR CASTRO", "ANAHI ARIANA", "20230007", "2005-10-12"),
+    ("BENITES CABRERA", "KATHLEEN ASHLEY", "20230008", "2005-11-05"),
+    ("CABRERA NAVAS", "JESHUA EMANUEL", "20230009", "2005-12-01"),
+    ("CAMPOVERDE FIGUEROA", "MARIA", "20230010", "2005-02-16"),
+    ("CANTOS MORÁN", "JOSUE GABRIEL", "20230011", "2005-03-30"),
+    ("CEDEÑO VERA", "LISETTE LILIBETH", "20230012", "2005-04-05"),
+    ("GARCIA BENITES", "YEICO DANIEL", "20230013", "2005-05-23"),
+    ("GOMEZ ESPINOZA", "VALESKA NICOLLE", "20230014", "2005-06-15"),
+    ("GUTIERREZ ARIAS", "JULIETTE MALENA", "20230015", "2005-07-01"),
+    ("HERRERA CHICHANDE", "MISAEL", "20230016", "2005-08-30"),
+    ("IDROVO HERAS", "JUAN DIEGO", "20230017", "2005-09-28"),
+    ("INTRIAGO PITA", "ANGELICA KATHERINE", "20230018", "2005-10-14"),
+    ("LOPEZ SALTOS", "LUIS JOSUE", "20230019", "2005-11-25"),
+    ("LUCAS ROMERO", "FRANKLIN ROGERS", "20230020", "2005-12-19"),
+    ("MONCAYO QUIÑONEZ", "BIANKA ARIANNA", "20230021", "2005-02-20"),
+    ("MONTIEL JIMENEZ", "SAMUEL ISMAEL", "20230022", "2005-03-25"),
+    ("MOYON VELIZ", "DAYRA MELISSA", "20230023", "2005-04-10"),
+    ("ONOFRE TORRES", "FRIDA SUSANA", "20230024", "2005-05-07"),
+    ("PALLAZHCO NAVARRETE", "KENNY ISRAEL", "20230025", "2005-06-13"),
+    ("PAREDES PICHISACA", "DEYANEIRA PILAR", "20230026", "2005-07-01"),
+    ("QUIÑONEZ MONTE", "DOMENICA TAILY", "20230027", "2005-08-09"),
+    ("REINOSO BAQUE", "CESAR ERNESTO", "20230028", "2005-09-20"),
+    ("RODRIGUEZ JARAMILLO", "AXEL", "20230029", "2005-10-14"),
+    ("SANCHEZ ALLAUCA", "LUIS RICARDO", "20230030", "2005-11-04"),
+    ("SANCHEZ BACUSOY", "ANDREA BELEN", "20230031", "2005-12-05"),
+    ("SANTANA MERCHAN", "JULEISY", "20230032", "2005-01-28"),
+    ("SANTANA GRACIA", "BRYAN STEVEEN", "20230033", "2005-02-15"),
+    ("VERA RIPALDA", "DALLYANA DE LOS RIOS", "20230034", "2005-03-20"),
+]
+
+# Crear los estudiantes
+for first_name, last_name, student_id, birth_date in students_data:
+    Student.objects.create(
+        first_name=first_name,
+        last_name=last_name,
+        student_id=student_id,
+        birth_date=birth_date, 
+        grade="6TO INFORMATICA",
+        parallel="B",
+        academic_year="2025-2026",
+        is_active=True,
+    )

@@ -1,0 +1,265 @@
+{% extends 'components/base.html' %}
+{% load static %}
+
+{% block title %}Dashboard de Asistencias{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<style>
+    .attendance-card {
+        transition: all 0.3s ease;
+    }
+    
+    .attendance-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+    
+    .status-badge {
+        font-size: 0.875rem;
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+    }
+    
+    .status-present { @apply bg-green-100 text-green-800; }
+    .status-absent { @apply bg-red-100 text-red-800; }
+    .status-late { @apply bg-yellow-100 text-yellow-800; }
+    .status-justified { @apply bg-blue-100 text-blue-800; }
+    
+    .notification-toast {
+        position: fixed;
+        top: 1rem;
+        right: 1rem;
+        z-index: 50;
+        transform: translateX(150%);
+        transition: transform 0.3s ease-in-out;
+    }
+    
+    .notification-toast.show {
+        transform: translateX(0);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Notification Container -->
+<div id="notificationContainer" class="notification-toast"></div>
+
+<!-- Header Section -->
+<div class="mb-8">
+    <h1 class="text-3xl font-bold text-gray-800 mb-2">Dashboard de Asistencias</h1>
+    <p class="text-gray-600">Gestiona y monitorea la asistencia de los estudiantes</p>
+</div>
+
+<!-- Filters Section -->
+<div class="glass-effect rounded-lg p-6 mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Rango de Fechas</label>
+            <input type="text" id="dateRange" class="w-full p-2 border rounded-md" placeholder="Seleccionar fechas">
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Estado</label>
+            <select id="statusFilter" class="w-full p-2 border rounded-md">
+                <option value="">Todos los estados</option>
+                {% for status_key, status_value in status_choices.items %}
+                    <option value="{{ status_key }}">{{ status_value }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="flex items-end">
+            <button id="applyFilters" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition">
+                <i class="fas fa-filter mr-2"></i>Aplicar Filtros
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <div class="glass-effect rounded-lg p-6 attendance-card">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-sm text-gray-600">Total Registros</p>
+                <h3 class="text-2xl font-bold text-gray-800" id="totalRecords">{{ total_records }}</h3>
+            </div>
+            <div class="bg-blue-100 p-3 rounded-full">
+                <i class="fas fa-clipboard-list text-blue-600 text-xl"></i>
+            </div>
+        </div>
+    </div>
+    
+    {% for status in status_distribution %}
+    <div class="glass-effect rounded-lg p-6 attendance-card">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-sm text-gray-600">{{ status.status|title }}</p>
+                <h3 class="text-2xl font-bold text-gray-800">{{ status.percentage|floatformat:1 }}%</h3>
+                <p class="text-sm text-gray-500">({{ status.count }} registros)</p>
+            </div>
+            <div class="status-badge status-{{ status.status }}">
+                <i class="fas fa-user-clock"></i>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Latest Records & Absences -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+    <!-- Latest Attendances -->
+    <div class="glass-effect rounded-lg p-6">
+        <h3 class="text-xl font-bold text-gray-800 mb-4">Últimos Registros</h3>
+        <div class="overflow-x-auto">
+            <table class="min-w-full" id="latestRecordsTable">
+                <thead>
+                    <tr class="border-b">
+                        <th class="px-4 py-2 text-left">Estudiante</th>
+                        <th class="px-4 py-2 text-left">Fecha</th>
+                        <th class="px-4 py-2 text-left">Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for attendance in latest_attendances %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-2">{{ attendance.student.get_full_name }}</td>
+                        <td class="px-4 py-2">{{ attendance.date|date:"d/m/Y" }}</td>
+                        <td class="px-4 py-2">
+                            <span class="status-badge status-{{ attendance.status }}">
+                                {{ attendance.get_status_display }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Students with Most Absences -->
+    <div class="glass-effect rounded-lg p-6">
+        <h3 class="text-xl font-bold text-gray-800 mb-4">Estudiantes con Más Ausencias</h3>
+        <div class="space-y-4" id="absencesList">
+            {% for student in students_with_absences %}
+            <div class="flex items-center justify-between p-3 bg-white rounded-lg shadow-sm">
+                <div class="flex items-center">
+                    <div class="bg-red-100 p-2 rounded-full mr-3">
+                        <i class="fas fa-user-times text-red-600"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-medium text-gray-800">
+                            {{ student.student__first_name }} {{ student.student__last_name }}
+                        </h4>
+                        <p class="text-sm text-gray-600">{{ student.total_absences }} ausencias</p>
+                    </div>
+                </div>
+                <button class="text-blue-600 hover:text-blue-800 transition"
+                        onclick="viewStudentDetails({{ student.id }})">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Register New Attendance -->
+<div class="glass-effect rounded-lg p-6">
+    <div class="flex justify-between items-center mb-4">
+        <h3 class="text-xl font-bold text-gray-800">Registrar Nueva Asistencia</h3>
+        <button onclick="toggleBulkModal(true)" 
+                class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition">
+            <i class="fas fa-users mr-2"></i>Registro Masivo
+        </button>
+    </div>
+    
+    <form id="newAttendanceForm" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {% csrf_token %}
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Estudiante</label>
+            <select id="studentSelect" class="w-full p-2 border rounded-md" required>
+                <option value="">Seleccionar estudiante</option>
+            </select>
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Fecha</label>
+            <input type="date" id="attendanceDate" class="w-full p-2 border rounded-md" required>
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Estado</label>
+            <select id="attendanceStatus" class="w-full p-2 border rounded-md" required>
+                {% for status_key, status_value in status_choices.items %}
+                    <option value="{{ status_key }}">{{ status_value }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="flex items-end">
+            <button type="submit" class="w-full bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition">
+                <i class="fas fa-plus mr-2"></i>Registrar
+            </button>
+        </div>
+    </form>
+</div>
+<div id="bulkAttendanceModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center">
+    <div class="bg-white rounded-lg p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="text-xl font-bold text-gray-800">Registro Masivo de Asistencias</h3>
+            <button onclick="toggleBulkModal(false)" class="text-gray-500 hover:text-gray-700">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <form id="bulkAttendanceForm" class="space-y-6">
+            {% csrf_token %}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Fecha</label>
+                    <input type="date" id="bulkAttendanceDate" class="w-full p-2 border rounded-md" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Estado por defecto</label>
+                    <select id="bulkAttendanceStatus" class="w-full p-2 border rounded-md" required>
+                        {% for status_key, status_value in status_choices.items %}
+                            <option value="{{ status_key }}">{{ status_value }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <div class="flex justify-between items-center mb-2">
+                    <h4 class="font-medium text-gray-700">Lista de Estudiantes</h4>
+                    <div class="space-x-2">
+                        <button type="button" onclick="selectAllStudents(true)" class="text-sm text-blue-600 hover:text-blue-800">
+                            Seleccionar todos
+                        </button>
+                        <button type="button" onclick="selectAllStudents(false)" class="text-sm text-blue-600 hover:text-blue-800">
+                            Deseleccionar todos
+                        </button>
+                    </div>
+                </div>
+                <div id="studentsList" class="border rounded-lg divide-y max-h-96 overflow-y-auto">
+                    <!-- Students will be loaded here dynamically -->
+                </div>
+            </div>
+
+            <div class="flex justify-end space-x-3">
+                <button type="button" onclick="toggleBulkModal(false)" 
+                        class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
+                    Cancelar
+                </button>
+                <button type="submit" 
+                        class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                    Registrar Asistencias
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
+<script src="{% static 'js/attendance.js' %}"></script>
+{% endblock %}

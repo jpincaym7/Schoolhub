@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="es">
+{% load static %}
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}SchoolHub{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        .glass-effect {
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.9);
+        }
+        .hover-scale {
+            transition: transform 0.2s;
+        }
+        .hover-scale:hover {
+            transform: scale(1.02);
+        }
+    </style>
+    <link rel="stylesheet" href="{% static 'css/modules.css' %}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-purple-50 min-h-screen" data-user-type="{{ request.user.user_type }}">
+    {% csrf_token %}
+    <div class="flex flex-col min-h-screen">
+        <!-- Header con Navbar moderno -->
+        <header class="glass-effect shadow-lg sticky top-0 z-50">
+            <div class="container mx-auto px-4">
+                <div class="flex justify-between items-center py-4">
+                    <!-- Logo y saludo -->
+                    <div class="flex items-center space-x-4">
+                        <div class="flex items-center">
+                            <a href="{% url 'dashboard'%}" class="flex items-center">
+                                <i class="fas fa-graduation-cap text-3xl text-blue-600"></i>
+                                <h1 class="ml-2 text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 text-transparent bg-clip-text">
+                                    SchoolHub
+                                </h1>
+                            </a>
+                        </div>
+                    </div>                    
+                    <!-- Notificaciones y Perfil -->
+                    <div class="flex items-center space-x-4">
+                        <!-- Notificaciones -->
+                        <div class="relative">
+                            <button class="p-2 rounded-full hover:bg-gray-100 transition">
+                                <i class="fas fa-bell text-gray-600"></i>
+                                {% if notifications_count > 0 %}
+                                <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                                    {{ notifications_count }}
+                                </span>
+                                {% endif %}
+                            </button>
+                        </div>
+
+                        <!-- User Profile Dropdown -->
+                        <div x-data="{ open: false }" class="relative">
+                            <button @click="open = !open" 
+                                    class="flex items-center space-x-3 p-2 rounded-full hover:bg-gray-100 transition">
+                                <img src="{{ '/static/img/9334176.jpg' }}" 
+                                     class="w-8 h-8 rounded-full object-cover border-2 border-blue-500"
+                                     alt="{{ user.username }}">
+                                <span class="text-gray-700">{{ user.username}}</span>
+                                <i class="fas fa-chevron-down text-gray-500"></i>
+                            </button>
+                            <div x-show="open" @click.away="open = false" 
+                                 class="absolute right-0 mt-2 w-48 glass-effect rounded-lg shadow-xl">
+                                <div class="py-2">
+                                    <a href="#" class="block px-4 py-2 text-gray-700 hover:bg-blue-50 transition">
+                                        <i class="fas fa-user mr-2"></i>Perfil
+                                    </a>
+                                    {% if is_admin %}
+                                    <a href="{% url 'users:module_management' %}" class="block px-4 py-2 text-gray-700 hover:bg-blue-50 transition">
+                                        <i class="fas fa-cog mr-2"></i>Administrador
+                                    </a>
+                                    {% endif %}
+                                    <hr class="my-2">
+                                    <a href="#" id="logout-link" class="block px-4 py-2 text-red-600 hover:bg-red-50 transition">
+                                        <i class="fas fa-sign-out-alt mr-2"></i>Cerrar Sesión
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="flex-1 container mx-auto px-4 py-6">
+            {% block content %}{% endblock %}
+        </main>
+
+        <!-- Footer -->
+        <footer class="glass-effect py-4">
+            <div class="container mx-auto px-4 text-center">
+                <p class="text-gray-600">&copy; 2025 SchoolHub. Todos los derechos reservados.</p>
+                <p class="text-gray-600">Hora actual: <span id="current-time"></span></p>
+            </div>
+        </footer>        
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        function updateTime() {
+            const now = new Date();
+            const options = { hour: '2-digit', minute: '2-digit', second: '2-digit' };
+            const formattedTime = now.toLocaleTimeString('es-ES', options);
+            document.getElementById('current-time').textContent = formattedTime;
+        }
+    
+        // Actualiza la hora cada segundo
+        setInterval(updateTime, 1000);
+        updateTime(); // Llama la función inmediatamente para mostrar la hora al cargar
+    </script>
+    
+    <script>
+        document.getElementById('logout-link').addEventListener('click', function(event) {
+            event.preventDefault();
+        
+            fetch('/users/logout/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.href = data.redirect_url;
+                } else {
+                    alert(data.message || 'Error al cerrar sesión');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Hubo un error al intentar cerrar sesión');
+            });
+        });
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
