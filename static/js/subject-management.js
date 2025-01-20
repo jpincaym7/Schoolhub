@@ -117,7 +117,7 @@ class SubjectsManager {
             this.showError('No tienes permisos para editar materias');
             return;
         }
-        if (!subject && !this.permissions.can_create) {
+        if (this.isTeacher) {
             this.showError('No tienes permisos para crear materias');
             return;
         }

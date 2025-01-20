@@ -133,6 +133,7 @@ class GradesManager {
             if (!response.ok) throw new Error('Network response was not ok');
             
             const data = await response.json();
+            console.log(data)
             // Now we expect the grades to be in the results array
             const gradesArray = data.results;
             this.renderGrades(gradesArray);
@@ -189,6 +190,7 @@ class GradesManager {
     }
 
     async saveGrade(studentId, score) {
+        console.log(studentId, score)
         try {
             const response = await fetch(`/subjects/activities/${this.activityId}/`, {
                 method: 'PATCH',

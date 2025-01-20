@@ -71,12 +71,20 @@ class ActivityTemplateViewSet(viewsets.ModelViewSet):
         queryset = super().get_queryset()
         subject_id = self.request.query_params.get('subject')
         period_id = self.request.query_params.get('academic_period')
+        student_id = self.request.query_params.get('student')
+        partial = self.request.query_params.get('partial')
+        template_id = self.request.query_params.get('template')
         
         if subject_id:
             queryset = queryset.filter(subject_id=subject_id)
-            
         if period_id:
             queryset = queryset.filter(academic_period_id=period_id)
+        if student_id:
+            queryset = queryset.filter(student_id=student_id)
+        if partial:
+            queryset = queryset.filter(partial_number=partial)
+        if template_id:
+            queryset = queryset.filter(template_id=template_id)
 
         return queryset
 
@@ -141,6 +149,7 @@ class ActivityViewSet(viewsets.ModelViewSet):
     serializer_class = ActivitySerializer
     permission_classes = [IsAuthenticated]
     http_method_names = ['get', 'post', 'put', 'patch', 'delete'] 
+    
 
     def get_queryset(self):
         queryset = super().get_queryset()

@@ -35,6 +35,7 @@ class StudentViewSet(viewsets.ModelViewSet):
     MODULE_CODE = 'STUDENTS#1'  # Código del módulo para permisos
     queryset = Student.objects.all()
     
+    
     def get_queryset(self):
         """
         Retorna el queryset base filtrado por estudiantes activos.

@@ -187,6 +187,7 @@ async loadStudents() {
         const response = await fetch(`/students/api-students/`);
         if (!response.ok) throw new Error('Error al cargar estudiantes');
         const data = await response.json();
+        console.log(data)
         this.students = data.results || [];
         this.renderStudentsList();
     } catch (error) {
@@ -239,10 +240,11 @@ hideModal() {
 async loadActivities(parcial) {
     try {
         const response = await fetch(
-            `/subjects/activities/?subject=${this.subjectId}&partial=${parcial}&academic_period=${this.currentAcademicPeriod.id}`
+            `/subjects/activity-templates/?subject=${this.subjectId}&partial=${parcial}&academic_period=${this.currentAcademicPeriod.id}`
         );
         if (!response.ok) throw new Error('Error al cargar actividades');
         const data = await response.json();
+        console.log(data)
         this.renderActivities(data.results || []);
     } catch (error) {
         this.showToast(error.message, 'error');
@@ -269,7 +271,7 @@ renderActivities(activities) {
         const key = `${activity.activity_type}-${activity.sequence_number}`;
         if (!acc[key]) {
             acc[key] = {
-                template: activity.template,
+                template: activity.id,
                 name: activity.name,
                 description: activity.description,
                 activity_type: activity.activity_type,
