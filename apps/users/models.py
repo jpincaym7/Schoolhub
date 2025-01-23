@@ -10,7 +10,7 @@ class User(AbstractUser):
     USER_TYPE_CHOICES = (
         ('admin', 'Administrador'),
         ('teacher', 'Profesor'),
-        ('parent', 'Padre/Representante')
+        ('estudiante', 'Estudiante'),
     )
     
     

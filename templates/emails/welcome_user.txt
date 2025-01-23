@@ -1,0 +1,20 @@
+<!-- templates/emails/welcome_user.txt -->
+¡Bienvenido al Sistema de Gestión Académica!
+
+Estimado/a {{ user.get_full_name }},
+
+Le damos la bienvenida al Sistema de Gestión Académica. Su cuenta ha sido creada exitosamente.
+
+Sus credenciales de acceso son:
+Usuario: {{ user.username }}
+Contraseña: {{ password }}
+
+Por favor, ingrese al sistema utilizando el siguiente enlace:
+{{ login_url }}
+
+Por seguridad, le recomendamos cambiar su contraseña después del primer inicio de sesión.
+
+Si tiene alguna pregunta o necesita ayuda, no dude en contactarnos.
+
+Saludos cordiales,
+Equipo de Gestión Académica

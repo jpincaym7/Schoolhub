@@ -1,0 +1,163 @@
+{% extends 'components/base.html' %}
+{% load static %}
+
+{% block content %}
+<div x-data="gradesManager" class="space-y-6">
+    <div class="bg-white shadow-md rounded-xl p-6">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-bold text-gray-800">Mis Calificaciones</h1>
+            <div class="flex space-x-3">
+                <button @click="printGrades" class="btn btn-outline-primary flex items-center">
+                    <i class="fas fa-print mr-2"></i>Imprimir
+                </button>
+                <select x-model="selectedPeriod" class="form-select">
+                    <template x-for="period in periods" :key="period.id">
+                        <option :value="period.id" x-text="period.nombre"></option>
+                    </template>
+                </select>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full border-collapse">
+                <thead class="bg-primary-50">
+                    <tr>
+                        <th class="border p-3 text-left">Materia</th>
+                        <th class="border p-3 text-center">Tareas</th>
+                        <th class="border p-3 text-center">Primer Parcial</th>
+                        <th class="border p-3 text-center">Segundo Parcial</th>
+                        <th class="border p-3 text-center">Promedio Final</th>
+                        <th class="border p-3 text-center">Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <template x-for="grade in grades" :key="grade.materia">
+                        <tr class="hover:bg-gray-50 transition group">
+                            <td class="border p-3 font-semibold" x-text="grade.materia"></td>
+                            <td class="border p-3">
+                                <div class="flex justify-center space-x-2">
+                                    <div class="task-grade" x-text="grade.tarea1.toFixed(1)"></div>
+                                    <div class="task-grade" x-text="grade.tarea2.toFixed(1)"></div>
+                                    <div class="task-grade" x-text="grade.tarea3.toFixed(1)"></div>
+                                    <div class="task-grade" x-text="grade.tarea4.toFixed(1)"></div>
+                                </div>
+                            </td>
+                            <td class="border p-3 text-center font-bold text-primary-600" x-text="grade.parcial1.toFixed(1)"></td>
+                            <td class="border p-3 text-center font-bold text-primary-600" x-text="grade.parcial2.toFixed(1)"></td>
+                            <td class="border p-3 text-center text-lg font-bold" 
+                                :class="{
+                                    'text-green-600': grade.promedio_final >= 7,
+                                    'text-red-600': grade.promedio_final < 7
+                                }"
+                                x-text="grade.promedio_final.toFixed(1)">
+                            </td>
+                            <td class="border p-3 text-center">
+                                <span 
+                                    :class="{
+                                        'bg-green-100 text-green-800': grade.promedio_final >= 7,
+                                        'bg-red-100 text-red-800': grade.promedio_final < 7
+                                    }"
+                                    class="px-3 py-1 rounded-full text-sm font-semibold"
+                                    x-text="grade.promedio_final >= 7 ? 'Aprobado' : 'Reprobado'"
+                                ></span>
+                            </td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="grid md:grid-cols-2 gap-6">
+        <div class="bg-white shadow-md rounded-xl p-6">
+            <h2 class="text-xl font-bold mb-4 text-gray-800">Promedio General</h2>
+            <div class="text-center">
+                <div 
+                    x-text="generalAverage.toFixed(1)" 
+                    class="text-4xl font-bold mx-auto w-32 h-32 rounded-full flex items-center justify-center shadow-lg transform transition hover:scale-105"
+                    :class="{
+                        'bg-green-100 text-green-800': generalAverage >= 7,
+                        'bg-red-100 text-red-800': generalAverage < 7
+                    }"
+                ></div>
+                <p class="mt-2 text-gray-600 text-lg">
+                    <span x-text="generalAverage >= 7 ? 'Aprobado' : 'En Riesgo'" class="font-semibold"></span>
+                </p>
+            </div>
+        </div>
+
+        <div class="bg-white shadow-md rounded-xl p-6">
+            <h2 class="text-xl font-bold mb-4 text-gray-800">Desempeño Académico</h2>
+            <div class="space-y-4">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center space-x-3">
+                        <i class="fas fa-trophy text-green-500"></i>
+                        <span>Mejor Materia</span>
+                    </div>
+                    <span x-text="bestSubject" class="font-semibold text-green-600"></span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center space-x-3">
+                        <i class="fas fa-exclamation-triangle text-red-500"></i>
+                        <span>Materia con Más Dificultad</span>
+                    </div>
+                    <span x-text="worstSubject" class="font-semibold text-red-600"></span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center space-x-3">
+                        <i class="fas fa-book text-primary-500"></i>
+                        <span>Total de Materias</span>
+                    </div>
+                    <span x-text="grades.length" class="font-semibold"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.task-grade {
+    @apply w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300 ease-in-out;
+    background-color: rgba(14, 165, 233, 0.1);
+    color: #0ea5e9;
+}
+.task-grade:hover {
+    transform: scale(1.1);
+    background-color: rgba(14, 165, 233, 0.2);
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('alpine:init', () => {
+    Alpine.data('gradesManager', () => ({
+        grades: {{ grades_json|safe }},
+        periods: {{ periods_json|safe }},
+        selectedPeriod: {{ current_period_id }},
+        
+        get generalAverage() {
+            return this.grades.reduce((sum, grade) => sum + grade.promedio_final, 0) / this.grades.length;
+        },
+
+        get bestSubject() {
+            return this.grades.reduce((best, current) => 
+                (current.promedio_final > best.promedio_final) ? current : best
+            ).materia;
+        },
+
+        get worstSubject() {
+            return this.grades.reduce((worst, current) => 
+                (current.promedio_final < worst.promedio_final) ? current : worst
+            ).materia;
+        },
+
+        printGrades() {
+            window.print();
+        }
+    }));
+});
+</script>
+{% endblock %}

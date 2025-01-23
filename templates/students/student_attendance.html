@@ -1,0 +1,153 @@
+{% extends "components/base.html" %}
+{% load static %}
+
+{% block title %}Mi Asistencia{% endblock %}
+
+{% block content %}
+<div x-data="studentAttendance()" class="container mx-auto px-4 py-8">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Attendance Summary Card -->
+        <div class="bg-white shadow-lg rounded-xl p-6 border border-gray-200 md:col-span-2">
+            <h1 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                <i class="fas fa-chart-pie mr-3 text-primary-600"></i>
+                Resumen de Asistencia
+            </h1>
+            
+            <div class="grid grid-cols-3 gap-4">
+                <div class="bg-primary-50 p-4 rounded-lg text-center">
+                    <h3 class="text-sm text-gray-600">Total Clases</h3>
+                    <p class="text-2xl font-bold text-primary-600">{{ total_clases }}</p>
+                </div>
+                <div class="bg-green-50 p-4 rounded-lg text-center">
+                    <h3 class="text-sm text-gray-600">Presentes</h3>
+                    <p class="text-2xl font-bold text-green-600">{{ presentes }}</p>
+                </div>
+                <div class="bg-red-50 p-4 rounded-lg text-center">
+                    <h3 class="text-sm text-gray-600">Porcentaje</h3>
+                    <p class="text-2xl font-bold text-red-600">{{ porcentaje_asistencia }}%</p>
+                </div>
+            </div>
+
+            <!-- Monthly Attendance Chart -->
+            <div class="mt-8">
+                <h2 class="text-xl font-semibold mb-4">Asistencia Mensual</h2>
+                <div id="monthlyChart" class="h-64"></div>
+            </div>
+        </div>
+
+        <!-- Detailed Attendance Log -->
+        <div class="bg-white shadow-lg rounded-xl p-6 border border-gray-200">
+            <h2 class="text-xl font-semibold mb-4 flex items-center">
+                <i class="fas fa-list-alt mr-2 text-primary-600"></i>
+                Registro de Asistencias
+            </h2>
+            
+            <div class="space-y-2 max-h-[500px] overflow-y-auto">
+                {% for asistencia in asistencias %}
+                <div class="flex items-center justify-between p-3 
+                    {% if asistencia.asistio %}bg-green-50 border-l-4 border-green-500
+                    {% else %}bg-red-50 border-l-4 border-red-500{% endif %} 
+                    rounded-lg">
+                    <div>
+                        <p class="font-medium text-sm">
+                            {{ asistencia.fecha|date:"d/m/Y" }}
+                        </p>
+                        {% if not asistencia.asistio and asistencia.justificacion %}
+                        <p class="text-xs text-gray-600 mt-1">
+                            {{ asistencia.justificacion }}
+                        </p>
+                        {% endif %}
+                    </div>
+                    <span class="text-sm {% if asistencia.asistio %}text-green-600{% else %}text-red-600{% endif %}">
+                        {{ asistencia.asistio|yesno:"Presente,Ausente" }}
+                    </span>
+                </div>
+                {% empty %}
+                <p class="text-center text-gray-500">No hay registros de asistencia</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.2/dist/echarts.min.js"></script>
+<script>
+function studentAttendance() {
+    return {
+        monthlyData: {{ monthly_attendance|safe }},
+        
+        initChart() {
+            const monthNames = [
+                'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
+                'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+            ];
+
+            const chartDom = document.getElementById('monthlyChart');
+            const myChart = echarts.init(chartDom);
+
+            const option = {
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: { type: 'shadow' }
+                },
+                grid: { 
+                    left: '3%', 
+                    right: '4%', 
+                    bottom: '3%', 
+                    containLabel: true 
+                },
+                xAxis: [{
+                    type: 'category',
+                    data: this.monthlyData.map(item => 
+                        `${monthNames[item.month - 1]} ${item.year}`
+                    ),
+                    axisTick: { show: false },
+                    axisLabel: { 
+                        color: '#6b7280',
+                        rotate: 45 
+                    }
+                }],
+                yAxis: [{
+                    type: 'value',
+                    name: 'Clases',
+                    min: 0,
+                    axisLabel: { 
+                        color: '#6b7280',
+                        formatter: '{value}'
+                    }
+                }],
+                series: [
+                    {
+                        name: 'Total Clases',
+                        type: 'bar',
+                        barWidth: '45%',
+                        itemStyle: { color: '#3b82f6' },
+                        data: this.monthlyData.map(item => item.total_clases)
+                    },
+                    {
+                        name: 'Presentes',
+                        type: 'bar',
+                        barWidth: '45%',
+                        itemStyle: { color: '#10b981' },
+                        data: this.monthlyData.map(item => item.presentes)
+                    }
+                ]
+            };
+
+            myChart.setOption(option);
+        },
+
+        mounted() {
+            this.initChart();
+        }
+    };
+}
+
+document.addEventListener('alpine:init', () => {
+    document.querySelector('[x-data="studentAttendance()"]')
+        .__x.$data.mounted();
+});
+</script>
+{% endblock %}

@@ -1,24 +1,27 @@
-from django.shortcuts import redirect
+# middleware.py
+from django.http import JsonResponse
 from django.urls import reverse
 from django.conf import settings
 
-class LoginRequiredMiddleware:
+class AuthMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
 
     def __call__(self, request):
-        # URLs que no requieren autenticación
-        exempt_urls = [
-            '/users/login/',
+        # Lista de URLs que no requieren autenticación
+        public_urls = [
+            reverse('users:login'),
+            reverse('users:csrf'),
             '/admin/login/',
-            '/admin/',
         ]
-        
-        # Verificar si el usuario no está autenticado y la URL no está exenta
-        if not request.user.is_authenticated and request.path_info not in exempt_urls:
-            # Guardar la URL actual para redirigir después del login
-            request.session['next'] = request.path_info
-            return redirect('users:login')
-            
+
+        if not request.user.is_authenticated and request.path not in public_urls:
+            if request.headers.get('accept') == 'application/json':
+                return JsonResponse({
+                    'success': False,
+                    'message': 'No autenticado',
+                    'redirect_url': reverse('users:login')
+                }, status=401)
+
         response = self.get_response(request)
         return response

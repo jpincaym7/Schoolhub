@@ -1,133 +1,151 @@
-from django.db import transaction
-from django.core.exceptions import ValidationError
-from django.utils.translation import gettext_lazy as _
+from django.db.models import Prefetch, Q
 from decimal import Decimal
-from typing import Dict, List
-from django.utils import timezone
-from django.db.models import Max
-from apps.subjects.models import (
-    Activity,
-    AcademicPeriod,
-    Subject,
-    PartialGrade,
-    ActivityTemplate,
-)
 
-class ActivityCreator:
-    @classmethod
-    def create_from_template(cls, template, students) -> List['Activity']:
-        """
-        Creates activities for multiple students based on a template,
-        handling sequence numbers and validating limits per activity type.
-        """
-        from apps.subjects.models import Activity  # Import here to avoid circular imports
-        
-        activities_to_create = []
-        
-        with transaction.atomic():
-            for student in students:
-                # Check if student has reached the limit for this activity type and partial
-                existing_activities_count = Activity.objects.filter(
-                    student=student,
-                    subject=template.subject,
-                    academic_period=template.academic_period,
-                    partial_number=template.partial_number,
-                    activity_type=template.activity_type
-                ).count()
-                
-                # Validate activity type limits (max 2 per type per partial)
-                if existing_activities_count >= 2:
-                    raise ValidationError(
-                        _('El estudiante %(student)s ya tiene el máximo de actividades %(type)s '
-                          'permitidas (2) para el parcial %(partial)d.'),
-                        params={
-                            'student': student,
-                            'type': template.get_activity_type_display(),
-                            'partial': template.partial_number
-                        }
-                    )
-                
-                # Get the next sequence number for this student
-                next_sequence = cls._get_next_sequence_for_student(
-                    student,
-                    template.subject,
-                    template.academic_period,
-                    template.partial_number,
-                    template.activity_type
-                )
-                
-                # Create new activity
-                activity = Activity(
-                    name=template.name,
-                    description=template.description,
-                    activity_type=template.activity_type,
-                    partial_number=template.partial_number,
-                    sequence_number=next_sequence,
-                    subject=template.subject,
-                    student=student,
-                    academic_period=template.academic_period
-                )
-                
-                # Validate the new activity
-                activity.full_clean()
-                activities_to_create.append(activity)
-            
-            # Bulk create all activities if validation passed
-            created_activities = Activity.objects.bulk_create(activities_to_create)
-            
-        return created_activities
+from apps.students.models import DetalleMatricula
+from apps.subjects.models.activity import Aporte, CalificacionDeber, NotaFinalMateria, Parcial
+
+def get_student_grades_report(asignacion_profesor):
+    """
+    Obtiene un reporte completo de calificaciones de estudiantes para una asignación específica,
+    incluyendo los que no tienen calificaciones.
     
-    @staticmethod
-    def _get_next_sequence_for_student(student, subject, academic_period, partial_number, activity_type) -> int:
-        """
-        Gets the next available sequence number for a specific student and activity configuration.
-        """
-        from apps.subjects.models import Activity  # Import here to avoid circular imports
+    Args:
+        asignacion_profesor (AsignacionProfesor): La asignación del profesor
         
-        last_sequence = Activity.objects.filter(
-            student=student,
-            subject=subject,
-            academic_period=academic_period,
-            partial_number=partial_number,
-            activity_type=activity_type
-        ).aggregate(Max('sequence_number'))['sequence_number__max'] or 0
+    Returns:
+        dict: Diccionario con las calificaciones y estudiantes sin calificaciones
+    """
+    # Obtener todos los estudiantes matriculados en la materia
+    estudiantes_matriculados = DetalleMatricula.objects.filter(
+        matricula__periodo=asignacion_profesor.periodo,
+        materia=asignacion_profesor.materia
+    ).select_related(
+        'matricula__estudiante',
+        'matricula__estudiante__usuario'
+    )
+    
+    # Inicializar diccionarios para almacenar resultados
+    calificaciones = {
+        'estudiantes_con_notas': [],
+        'estudiantes_sin_notas': [],
+        'resumen': {
+            'total_estudiantes': 0,
+            'con_notas': 0,
+            'sin_notas': 0,
+            'aprobados': 0,
+            'reprobados': 0
+        }
+    }
+    
+    for detalle in estudiantes_matriculados:
+        estudiante_info = {
+            'nombre': f"{detalle.matricula.estudiante.usuario.first_name} {detalle.matricula.estudiante.usuario.last_name}",
+            'id': detalle.matricula.estudiante.id,
+            'notas': {}
+        }
         
-        return last_sequence + 1
+        # Obtener parciales
+        parciales = Parcial.objects.filter(asignacion=asignacion_profesor)
+        tiene_notas = False
+        
+        for parcial in parciales:
+            nota_final_parcial = parcial.get_nota_final(detalle)
+            
+            if nota_final_parcial > Decimal('0'):
+                tiene_notas = True
+                
+            estudiante_info['notas'][f'parcial_{parcial.numero_parcial}'] = {
+                'nota_final': float(nota_final_parcial),
+                'deberes': [],
+                'aporte': None
+            }
+            
+            # Obtener calificaciones de deberes
+            deberes = CalificacionDeber.objects.filter(
+                deber__parcial=parcial,
+                detalle_matricula=detalle
+            )
+            
+            for deber in deberes:
+                estudiante_info['notas'][f'parcial_{parcial.numero_parcial}']['deberes'].append({
+                    'titulo': deber.deber.titulo,
+                    'valor': float(deber.valor),
+                    'fecha': deber.fecha_calificacion.strftime('%Y-%m-%d')
+                })
+            
+            # Obtener aporte
+            aporte = Aporte.objects.filter(
+                parcial=parcial,
+                detalle_matricula=detalle
+            ).first()
+            
+            if aporte:
+                estudiante_info['notas'][f'parcial_{parcial.numero_parcial}']['aporte'] = float(aporte.valor)
+        
+        # Obtener nota final de la materia
+        nota_final = NotaFinalMateria.objects.filter(detalle_matricula=detalle).first()
+        if nota_final:
+            estudiante_info['nota_final'] = {
+                'valor': float(nota_final.nota_final),
+                'aprobado': nota_final.aprobado
+            }
+            
+            if nota_final.aprobado:
+                calificaciones['resumen']['aprobados'] += 1
+            else:
+                calificaciones['resumen']['reprobados'] += 1
+        
+        # Clasificar estudiante según si tiene notas o no
+        if tiene_notas or nota_final:
+            calificaciones['estudiantes_con_notas'].append(estudiante_info)
+            calificaciones['resumen']['con_notas'] += 1
+        else:
+            calificaciones['estudiantes_sin_notas'].append(estudiante_info)
+            calificaciones['resumen']['sin_notas'] += 1
+            
+    calificaciones['resumen']['total_estudiantes'] = len(estudiantes_matriculados)
+    
+    return calificaciones
 
-class BulkGradeUpdate:
-    @staticmethod
-    def update_activity_scores(activity_template, scores_data):
-        """
-        Actualiza las calificaciones de las actividades relacionadas con un template.
-        :param activity_template: Plantilla de actividad
-        :param scores_data: Diccionario o lista de diccionarios con los datos de calificación (ej. {student_id: score})
-        :return: Lista de actividades actualizadas
-        """
-        updated_activities = []
-
-        # Obtén todas las actividades relacionadas con el template
-        activities = activity_template.get_all_related_activities()
-
-        # Creamos un diccionario para acceder rápidamente a las actividades por estudiante
-        activities_dict = {activity.student.id: activity for activity in activities}
-
-        # Inicia la transacción para asegurar que todo sea atómico
-        with transaction.atomic():
-            for data in scores_data:
-                student_id = data.get('student_id')
-                score = data.get('score')
-
-                # Verifica si existe la actividad para este estudiante
-                if student_id in activities_dict:
-                    activity = activities_dict[student_id]
-                    
-                    # Validar que la calificación esté en el rango adecuado (0 a 10)
-                    if not (0 <= score <= 10):
-                        raise ValidationError(f"La calificación para el estudiante {student_id} no es válida.")
-
-                    # Asigna la nueva calificación
-                    activity.score = Decimal(score)
-                    activity.save()  # Guardar la actividad actualizada
-                    updated_activities.append(activity)
-
-        return updated_activities
+def print_student_grades_report(asignacion_profesor):
+    """
+    Imprime un reporte formateado de las calificaciones de los estudiantes.
+    
+    Args:
+        asignacion_profesor (AsignacionProfesor): La asignación del profesor
+    """
+    reporte = get_student_grades_report(asignacion_profesor)
+    
+    print(f"\nReporte de Calificaciones - {asignacion_profesor}")
+    print("=" * 80)
+    
+    print("\nEstudiantes con calificaciones:")
+    print("-" * 40)
+    for estudiante in reporte['estudiantes_con_notas']:
+        print(f"\nEstudiante: {estudiante['nombre']}")
+        for parcial, datos in estudiante['notas'].items():
+            print(f"\n  {parcial.replace('_', ' ').title()}:")
+            print(f"    Nota final del parcial: {datos['nota_final']:.2f}")
+            
+            print("    Deberes:")
+            for deber in datos['deberes']:
+                print(f"      - {deber['titulo']}: {deber['valor']:.2f}")
+            
+            print(f"    Aporte: {datos['aporte']:.2f if datos['aporte'] else 'No registrado'}")
+            
+        if 'nota_final' in estudiante:
+            print(f"\n  Nota Final: {estudiante['nota_final']['valor']:.2f}")
+            print(f"  Estado: {'Aprobado' if estudiante['nota_final']['aprobado'] else 'Reprobado'}")
+    
+    print("\nEstudiantes sin calificaciones:")
+    print("-" * 40)
+    for estudiante in reporte['estudiantes_sin_notas']:
+        print(f"- {estudiante['nombre']}")
+    
+    print("\nResumen:")
+    print("-" * 40)
+    print(f"Total de estudiantes: {reporte['resumen']['total_estudiantes']}")
+    print(f"Estudiantes con notas: {reporte['resumen']['con_notas']}")
+    print(f"Estudiantes sin notas: {reporte['resumen']['sin_notas']}")
+    print(f"Estudiantes aprobados: {reporte['resumen']['aprobados']}")
+    print(f"Estudiantes reprobados: {reporte['resumen']['reprobados']}")

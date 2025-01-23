@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bienvenido al Sistema Académico</title>
+</head>
+<body>
+    <div style="font-family: Arial, sans-serif; color: #333; background-color: #f8f9fa; padding: 20px;">
+        <h2 style="color: #007bff;">Bienvenido al Sistema Académico</h2>
+        <p>Estimado/a {{ first_name }},</p>
+        <p>Nos complace informarte que tu cuenta ha sido creada con éxito en el Sistema Académico.</p>
+        <p>A continuación, te proporcionamos los detalles de tu cuenta:</p>
+        <ul>
+            <li><strong>Usuario:</strong> {{ username }}</li>
+            <li><strong>Tipo de Usuario:</strong> {{ user_type }}</li>
+            <li><strong>Contraseña Temporal:</strong> {{ password }}</li>
+        </ul>
+        <p>Te recomendamos acceder al sistema lo antes posible y cambiar tu contraseña para asegurar la privacidad de tu cuenta.</p>
+        <p>Si tienes alguna pregunta o necesitas asistencia, no dudes en contactarnos.</p>
+        <br>
+        <p>Atentamente,<br>Equipo de Administración</p>
+    </div>
+</body>
+</html>

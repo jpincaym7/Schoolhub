@@ -1,0 +1,282 @@
+{% extends "components/base.html" %}
+{% load static %}
+
+{% block title %}Registro de Asistencia{% endblock %}
+
+{% block content %}
+<div x-data="attendanceRegistration()" class="max-w-4xl mx-auto">
+    <div class="bg-white shadow-lg rounded-xl p-6 border border-gray-200">
+        <h1 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+            <i class="fas fa-calendar-check mr-3 text-primary-600"></i>
+            Registro de Asistencia
+        </h1>
+
+        <div class="mb-4 flex space-x-4">
+            <input 
+                type="date" 
+                x-model="current_date" 
+                @change="fetchStudents()"
+                class="px-3 py-2 border border-gray-300 rounded-lg"
+            >
+            <button 
+                @click="openRegistrationModal()"
+                class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition">
+                Registrar Asistencia
+            </button>
+        </div>
+
+        <div x-show="historicalAttendances.length" class="mt-6">
+            <h2 class="text-xl font-semibold mb-4">Registros de Asistencia</h2>
+            <table class="w-full border-collapse">
+                <thead>
+                    <tr class="bg-gray-100">
+                        <th class="border p-2">Fecha</th>
+                        <th class="border p-2">Total Estudiantes</th>
+                        <th class="border p-2">Presentes</th>
+                        <th class="border p-2">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <template x-for="record in historicalAttendances" :key="record.fecha">
+                        <tr>
+                            <td class="border p-2 text-center" x-text="record.fecha"></td>
+                            <td class="border p-2 text-center" x-text="record.total_estudiantes"></td>
+                            <td class="border p-2 text-center" x-text="record.presentes"></td>
+                            <td class="border p-2 text-center">
+                                <button 
+                                    class="text-red-500 hover:text-red-700"
+                                    @click="deleteAttendanceRecord(record.fecha)">
+                                    Eliminar
+                                </button>
+                            </td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Attendance Registration Modal -->
+    <div 
+        x-show="showModal" 
+        x-transition 
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+    >
+        <div class="bg-white w-11/12 max-w-4xl rounded-xl shadow-2xl p-6 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">
+                    Registro de Asistencia - <span x-text="current_date"></span>
+                </h2>
+                <button 
+                    @click="closeModal()" 
+                    class="text-gray-600 hover:text-gray-900">
+                    <i class="fas fa-times text-2xl"></i>
+                </button>
+            </div>
+
+            <div x-show="loading" class="text-center py-8">
+                <div class="animate-spin inline-block w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full"></div>
+                <p class="mt-2 text-gray-600">Cargando estudiantes...</p>
+            </div>
+
+            <div x-show="!loading">
+                <div class="overflow-x-auto rounded-lg border border-gray-200">
+                    <table class="w-full">
+                        <thead class="bg-primary-50">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estudiante</th>
+                                <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Asistencia</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Justificación</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200">
+                            <template x-for="(student, index) in students" :key="student.id">
+                                <tr class="hover:bg-gray-50 transition">
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center">
+                                            <div class="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center mr-3">
+                                                <span x-text="student.nombre[0].toUpperCase()" class="text-primary-600 font-bold"></span>
+                                            </div>
+                                            <span x-text="student.nombre" class="font-medium text-gray-900"></span>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3 text-center">
+                                        <div class="flex justify-center space-x-2">
+                                            <button 
+                                                @click="toggleAttendance(index, true)" 
+                                                :class="{'bg-green-500 text-white': student.asistio === true, 'bg-gray-100 text-gray-600': student.asistio !== true}"
+                                                class="px-3 py-1 rounded-full transition hover:bg-green-500 hover:text-white">
+                                                Presente
+                                            </button>
+                                            <button 
+                                                @click="toggleAttendance(index, false)" 
+                                                :class="{'bg-red-500 text-white': student.asistio === false, 'bg-gray-100 text-gray-600': student.asistio !== false}"
+                                                class="px-3 py-1 rounded-full transition hover:bg-red-500 hover:text-white">
+                                                Ausente
+                                            </button>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <input 
+                                            x-model="student.justificacion"
+                                            x-show="student.asistio === false"
+                                            type="text" 
+                                            placeholder="Razón de la ausencia"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-200 outline-none transition"
+                                        >
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="mt-6 flex justify-end space-x-4">
+                    <button 
+                        @click="closeModal()"
+                        class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition">
+                        Cancelar
+                    </button>
+                    <button 
+                        @click="submitAttendance()"
+                        class="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition flex items-center">
+                        <i class="fas fa-save mr-2"></i> Guardar Asistencias
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function attendanceRegistration() {
+    return {
+        students: [],
+        historicalAttendances: [],
+        loading: true,
+        showModal: false,
+        current_date: new Date().toISOString().split('T')[0],
+
+        init() {
+            this.fetchHistoricalAttendances();
+        },
+
+        fetchHistoricalAttendances() {
+            fetch('{% url "communications:asistencias-lista" %}')
+                .then(response => response.json())
+                .then(data => {
+                    this.historicalAttendances = data.results;
+                });
+        },
+
+        openRegistrationModal() {
+            this.fetchStudents();
+            this.showModal = true;
+        },
+
+        closeModal() {
+            this.showModal = false;
+            this.resetForm();
+        },
+
+        fetchStudents() {
+            this.loading = true;
+            // Endpoint para obtener estudiantes sin registro de asistencia para la fecha
+            fetch(`{% url "communications:consult-list" %}?periodo={{ current_periodo.id }}&fecha=${this.current_date}&sin_asistencia=true`)
+                .then(response => response.json())
+                .then(data => {
+                    this.students = data.results.map(enrollment => ({
+                        id: enrollment.id,
+                        nombre: enrollment.estudiante_get_full_name,
+                        asistio: null,
+                        justificacion: '',
+                        materias: enrollment.materias
+                    }));
+                    this.loading = false;
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showToast('No se pudieron cargar los estudiantes', 'error');
+                    this.loading = false;
+                });
+        },
+
+        deleteAttendanceRecord(fecha) {
+            fetch('{% url "communications:asistencias-eliminar" %}', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify({ fecha: fecha })
+            })
+            .then(response => response.json())
+            .then(data => {
+                showToast(data.mensaje, 'success');
+                this.fetchHistoricalAttendances();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('Error al eliminar registro', 'error');
+            });
+        },
+
+        toggleAttendance(index, status) {
+            this.students[index].asistio = status;
+            if (status === true) {
+                this.students[index].justificacion = '';
+            }
+        },
+
+        submitAttendance() {
+            const invalidStudents = this.students.filter(
+                student => student.asistio === null || 
+                (student.asistio === false && !student.justificacion.trim())
+            );
+        
+            if (invalidStudents.length > 0) {
+                showToast('Confirma la asistencia de todos los estudiantes', 'warning');
+                return;
+            }
+        
+            fetch('{% url "communications:asistencias-registro-masivo" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify({
+                    fecha: this.current_date,
+                    matriculas_asistencias: this.students.map(student => ({
+                        matricula: student.id,
+                        asistencias: [{
+                            asistio: student.asistio,
+                            justificacion: student.justificacion
+                        }]
+                    }))
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                showToast(`${data.mensaje}`, 'success');
+                this.fetchHistoricalAttendances();
+                this.closeModal();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('Error al registrar asistencias', 'error');
+            });
+        },
+
+        resetForm() {
+            this.students.forEach(student => {
+                student.asistio = null;
+                student.justificacion = '';
+            });
+        }
+    };
+}
+</script>
+{% endblock %}

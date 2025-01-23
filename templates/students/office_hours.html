@@ -1,0 +1,234 @@
+{% extends "components/base.html" %}
+{% load static %}
+
+{% block title %}Horarios de Atención{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --primary-color: #4285f4;
+        --secondary-color: #34a853;
+        --text-color: #202124;
+        --background-color: #f1f3f4;
+        --hover-color: #e8eaed;
+    }
+
+    .calendar-container {
+        display: flex;
+        background-color: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+
+    .calendar-sidebar {
+        width: 280px;
+        background-color: var(--background-color);
+        border-right: 1px solid #dadce0;
+        padding: 20px;
+    }
+
+    .calendar-main {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .calendar-header {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        background-color: var(--primary-color);
+        color: white;
+        padding: 10px;
+        text-align: center;
+        font-weight: 600;
+    }
+
+    .calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 2px;
+        flex-grow: 1;
+    }
+
+    .calendar-slot {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 10px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        border: 1px solid #e0e0e0;
+        font-size: 0.9rem;
+    }
+
+    .slot-available {
+        background-color: #e6f3ff;
+        color: var(--primary-color);
+        border-color: var(--primary-color);
+    }
+
+    .slot-available:hover {
+        background-color: #d1e7ff;
+        transform: scale(1.02);
+        z-index: 10;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    .slot-unavailable {
+        background-color: #f1f3f4;
+        color: #70757a;
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
+
+    .professor-filter {
+        width: 100%;
+        padding: 10px;
+        margin-bottom: 15px;
+        border: 1px solid #dadce0;
+        border-radius: 6px;
+        font-size: 1rem;
+    }
+
+    .details-panel {
+        background-color: white;
+        border: 1px solid #dadce0;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .meeting-request-btn {
+        background-color: var(--secondary-color);
+        color: white;
+        border: none;
+        padding: 12px 20px;
+        border-radius: 6px;
+        font-weight: 600;
+        transition: background-color 0.3s ease;
+    }
+
+    .meeting-request-btn:hover {
+        background-color: #2c9d4a;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div x-data="officeHoursManager()" class="container mx-auto p-6">
+    <div class="calendar-container">
+        <div class="calendar-sidebar">
+            <select 
+                x-model="selectedProfesor" 
+                @change="fetchOfficeHours()"
+                class="professor-filter"
+            >
+                <option value="">Todos los Profesores</option>
+                {% for profesor in profesores %}
+                <option value="{{ profesor.id }}">{{ profesor.usuario.get_full_name }}</option>
+                {% endfor %}
+            </select>
+
+            <div class="details-panel">
+                <template x-if="selectedSlot">
+                    <div>
+                        <h3 class="text-xl font-bold mb-4 text-primary-600">Detalles de Horario</h3>
+                        <div class="space-y-3">
+                            <p><strong>Profesor:</strong> <span x-text="selectedSlot.profesor"></span></p>
+                            <p><strong>Día:</strong> <span x-text="selectedSlot.day"></span></p>
+                            <p><strong>Hora:</strong> <span x-text="selectedSlot.time"></span></p>
+                            <p><strong>Especialidad:</strong> <span x-text="selectedSlot.especialidad"></span></p>
+                        </div>
+                        <button 
+                            @click="requestMeeting()"
+                            class="mt-6 w-full meeting-request-btn"
+                        >
+                            Solicitar Reunión
+                        </button>
+                    </div>
+                </template>
+                <template x-if="!selectedSlot">
+                    <div class="text-center text-gray-500">
+                        Selecciona un horario para ver detalles
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <div class="calendar-main">
+            <div class="calendar-header">
+                {% for day in dias %}
+                <div>{{ day }}</div>
+                {% endfor %}
+            </div>
+
+            <div class="calendar-grid">
+                <template x-for="(slot, index) in weekSlots" :key="index">
+                    <div 
+                        :class="[
+                            'calendar-slot',
+                            slot.available ? 'slot-available' : 'slot-unavailable'
+                        ]"
+                        @click="slot.available && showSlotDetails(slot)"
+                    >
+                        <span x-text="slot.time"></span>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function officeHoursManager() {
+        return {
+            selectedProfesor: '',
+            selectedSlot: null,
+            weekSlots: [],
+
+            async fetchOfficeHours() {
+                try {
+                    const response = await fetch(`/subjects/consult-office/?profesor=${this.selectedProfesor}`);
+                    const data = await response.json();
+                    this.weekSlots = data.slots;
+                } catch (error) {
+                    console.error('Error fetching office hours:', error);
+                }
+            },
+
+            showSlotDetails(slot) {
+                this.selectedSlot = slot;
+            },
+
+            async requestMeeting() {
+                if (!this.selectedSlot) return;
+
+                try {
+                    const response = await fetch('/api/request-meeting/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                        },
+                        body: JSON.stringify(this.selectedSlot)
+                    });
+                    const result = await response.json();
+
+                    if (result.success) {
+                        showToast('Solicitud de reunión enviada', 'success');
+                    } else {
+                        showToast(result.message, 'error');
+                    }
+                } catch (error) {
+                    showToast('Error al solicitar reunión', 'error');
+                }
+            }
+        }
+    }
+</script>
+{% endblock %}

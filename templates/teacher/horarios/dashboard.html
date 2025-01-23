@@ -1,0 +1,268 @@
+{% extends "components/base.html" %}
+{% load static %}
+
+{% block content %}
+<div 
+    x-data="officeHoursManager" 
+    x-init="init"
+    class="bg-gray-50 min-h-screen p-4"
+>
+    <!-- Notification Area -->
+    <div 
+        x-show="notification.show" 
+        x-transition 
+        :class="notification.type === 'success' ? 'bg-green-100 border-green-400 text-green-700' : 'bg-red-100 border-red-400 text-red-700'"
+        class="fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg"
+    >
+        <span x-text="notification.message"></span>
+    </div>
+
+    <!-- Calendar Container -->
+    <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
+        <!-- Calendar Header -->
+        <div class="flex items-center justify-between p-4 bg-gray-100 border-b">
+            <div class="flex items-center space-x-4">
+                <h1 class="text-2xl font-bold text-gray-800">
+                    Horarios de Atención - {{ profesor_nombre }}
+                </h1>
+            </div>
+            <button 
+                @click="openAddHourModal" 
+                class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition flex items-center space-x-2"
+            >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                </svg>
+                <span>Agregar Horario</span>
+            </button>
+        </div>
+
+        <!-- Calendar Grid -->
+        <div class="grid grid-cols-5 gap-2 p-4 bg-white">
+            {% for dia in dias_semana %}
+            <div class="text-center font-semibold uppercase text-gray-600 border-b pb-2">
+                {{ dia|slice:":3"|upper }}
+            </div>
+            {% endfor %}
+
+            <template x-for="(day, dayIndex) in weekDays" :key="dayIndex">
+                <div class="border rounded-lg p-2 min-h-[120px] relative">
+                    <div class="text-sm font-semibold text-gray-700 mb-2" x-text="day.name"></div>
+                    <template x-if="day.slots.length > 0">
+                        <div class="space-y-1">
+                            <template x-for="(slot, slotIndex) in day.slots" :key="slotIndex">
+                                <div 
+                                    class="bg-blue-100 text-blue-800 rounded px-2 py-1 text-xs flex justify-between items-center"
+                                >
+                                    <span x-text="`${slot.hora_inicio} - ${slot.hora_fin}`"></span>
+                                    <button 
+                                        @click="deleteHour(slot)" 
+                                        class="text-red-500 hover:text-red-700"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+                    <template x-if="day.slots.length === 0">
+                        <div class="text-gray-400 text-xs text-center mt-4">
+                            Sin horarios
+                        </div>
+                    </template>
+                </div>
+            </template>
+        </div>
+    </div>
+
+    <!-- Modal for Adding Hours -->
+    <div 
+        x-show="addHourModal" 
+        x-transition 
+        class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center"
+    >
+        <div class="bg-white rounded-2xl p-6 w-full max-w-md mx-4">
+            <h2 class="text-xl font-semibold mb-6 text-gray-800">
+                Agregar Nuevo Horario
+            </h2>
+            <form @submit.prevent="saveOfficeHour" class="space-y-4">
+                <div>
+                    <label class="block mb-2 text-gray-700">Día</label>
+                    <select 
+                        x-model="newHour.dia" 
+                        required 
+                        class="w-full border-2 rounded-lg p-3 focus:ring-2 focus:ring-blue-400"
+                    >
+                        {% for dia in dias_semana %}
+                        <option value="{{ dia|slice:':3'|upper }}">{{ dia|title }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block mb-2 text-gray-700">Hora Inicio</label>
+                        <input 
+                            type="time" 
+                            x-model="newHour.hora_inicio" 
+                            required 
+                            class="w-full border-2 rounded-lg p-3 focus:ring-2 focus:ring-blue-400"
+                        >
+                    </div>
+                    <div>
+                        <label class="block mb-2 text-gray-700">Hora Fin</label>
+                        <input 
+                            type="time" 
+                            x-model="newHour.hora_fin" 
+                            required 
+                            class="w-full border-2 rounded-lg p-3 focus:ring-2 focus:ring-blue-400"
+                        >
+                    </div>
+                </div>
+
+                <div class="flex justify-end space-x-3">
+                    <button 
+                        type="button" 
+                        @click="addHourModal = false" 
+                        class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+                    >
+                        Cancelar
+                    </button>
+                    <button 
+                        type="submit" 
+                        class="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600"
+                    >
+                        Guardar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('alpine:init', () => {
+    Alpine.data('officeHoursManager', () => ({
+        weekDays: [],
+        newHour: {
+            dia: 'LUN',
+            hora_inicio: '',
+            hora_fin: ''
+        },
+        addHourModal: false,
+        notification: {
+            show: false,
+            type: 'success',
+            message: ''
+        },
+
+        init() {
+            this.fetchOfficeHours();
+        },
+
+        openAddHourModal() {
+            this.newHour = {
+                dia: 'LUN',
+                hora_inicio: '',
+                hora_fin: ''
+            };
+            this.addHourModal = true;
+        },
+
+        async fetchOfficeHours() {
+            try {
+                const response = await fetch('/subjects/horarios-atencion/?format=json');
+                const data = await response.json();
+                const wdays = data.results;
+                this.weekDays = ['LUN', 'MAR', 'MIE', 'JUE', 'VIE'].map(day => ({
+                    name: this.getDayName(day),
+                    slots: wdays.filter(hour => hour.dia === day)
+                }));
+            } catch (error) {
+                this.showNotification('Error al cargar horarios', 'error');
+            }
+        },
+
+        validateTimeRange(start, end) {
+            const startTime = new Date(`2000-01-01T${start}`);
+            const endTime = new Date(`2000-01-01T${end}`);
+            const validStart = new Date(`2000-01-01T13:30`);
+            const validEnd = new Date(`2000-01-01T17:00`);
+
+            return startTime >= validStart && endTime <= validEnd && startTime < endTime;
+        },
+
+        async saveOfficeHour() {
+            if (!this.validateTimeRange(this.newHour.hora_inicio, this.newHour.hora_fin)) {
+                this.showNotification('Solo se permiten horarios entre 1:30 PM y 5:00 PM', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/subjects/horarios-atencion/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify(this.newHour)
+                });
+
+                if (response.ok) {
+                    this.fetchOfficeHours();
+                    this.showNotification('Horario guardado exitosamente', 'success');
+                    this.addHourModal = false;
+                } else {
+                    this.showNotification('Error al guardar horario', 'error');
+                }
+            } catch (error) {
+                this.showNotification('Error al guardar horario', 'error');
+            }
+        },
+
+        async deleteHour(slot) {
+            try {
+                const response = await fetch(`/subjects/horarios-atencion/${slot.id}/`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    }
+                });
+
+                if (response.ok) {
+                    this.fetchOfficeHours();
+                    this.showNotification('Horario eliminado exitosamente', 'success');
+                } else {
+                    this.showNotification('Error al eliminar horario', 'error');
+                }
+            } catch (error) {
+                this.showNotification('Error al eliminar horario', 'error');
+            }
+        },
+
+        getDayName(dayCode) {
+            const days = {
+                'LUN': 'Lunes',
+                'MAR': 'Martes', 
+                'MIE': 'Miércoles',
+                'JUE': 'Jueves',
+                'VIE': 'Viernes'
+            };
+            return days[dayCode];
+        },
+
+        showNotification(message, type = 'success') {
+            this.notification.message = message;
+            this.notification.type = type;
+            this.notification.show = true;
+
+            setTimeout(() => {
+                this.notification.show = false;
+            }, 3000);
+        }
+    }));
+});
+</script>
+{% endblock %}

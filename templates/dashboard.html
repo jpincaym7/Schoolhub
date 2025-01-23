@@ -1,0 +1,309 @@
+{% extends 'components/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50">
+    <div class="container mx-auto px-4 py-8">
+        {% if user.profesor %}
+        <!-- Teacher Statistics -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center">
+                    <div class="p-3 bg-blue-100 rounded-full">
+                        <i class="fas fa-book text-2xl text-blue-600"></i>
+                    </div>
+                    <div class="ml-4">
+                        <h4 class="text-lg font-semibold text-gray-700">Materias</h4>
+                        <p class="text-2xl font-bold text-blue-600">{{ estadisticas_materias.total_materias }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center">
+                    <div class="p-3 bg-green-100 rounded-full">
+                        <i class="fas fa-users text-2xl text-green-600"></i>
+                    </div>
+                    <div class="ml-4">
+                        <h4 class="text-lg font-semibold text-gray-700">Estudiantes</h4>
+                        <p class="text-2xl font-bold text-green-600">{{ estadisticas_materias.total_estudiantes }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center">
+                    <div class="p-3 bg-purple-100 rounded-full">
+                        <i class="fas fa-chalkboard text-2xl text-purple-600"></i>
+                    </div>
+                    <div class="ml-4">
+                        <h4 class="text-lg font-semibold text-gray-700">Cursos</h4>
+                        <p class="text-2xl font-bold text-purple-600">{{ estadisticas_materias.total_cursos }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex flex-col lg:flex-row gap-8">
+            <!-- Main Content -->
+            <div class="lg:w-2/3">
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-2">Sistema de Gestión Académica</h2>
+                    <div class="h-1 w-24 bg-blue-600"></div>
+                </div>
+                
+                <!-- Modules Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    {% for module in modules %}
+                    <div class="bg-white rounded-lg shadow-lg transition-transform duration-300 hover:scale-105">
+                        <div class="p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="p-3 bg-blue-100 rounded-full">
+                                    <i class="{{ module.icon }} text-2xl text-blue-600"></i>
+                                </div>
+                                <span class="text-xs font-semibold text-gray-500">{{ module.code }}</span>
+                            </div>
+                            <h3 class="text-xl font-semibold text-gray-800 mb-2">{{ module.name }}</h3>
+                            <p class="text-gray-600 text-sm mb-4">{{ module.description }}</p>
+                            
+                            <a href="{{ module.url }}" 
+                               class="inline-flex items-center justify-center w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-300">
+                                <span>Acceder</span>
+                                <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                </svg>
+                            </a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Photo Gallery Section -->
+                <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+                    <h3 class="text-xl font-semibold text-gray-800 mb-4">Galería Institucional</h3>
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        {% for i in "123456" %}
+                        <div class="relative aspect-square overflow-hidden rounded-lg">
+                            <img src="{% static 'img/9334176.jpg' %}" 
+                                 alt="Imagen institucional {{ i }}"
+                                 class="object-cover w-full h-full hover:scale-110 transition-transform duration-300">
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar - Teacher Information -->
+            <div class="lg:w-1/3 space-y-6">
+                <!-- Courses Section -->
+                <div class="bg-white rounded-lg shadow-lg p-6">
+                    <h3 class="text-xl font-semibold text-gray-800 mb-4">Mis Cursos</h3>
+                    <div class="space-y-4">
+                        {% for curso in cursos_profesor %}
+                        <div class="border-l-4 border-purple-600 pl-4 py-2">
+                            <h4 class="font-semibold text-gray-800">{{ curso }}</h4>
+                            <p class="text-sm text-gray-600">{{ curso.especialidad.nombre }}</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Students by Subject Section -->
+                <div class="bg-white rounded-lg shadow-lg p-6">
+                    <h3 class="text-xl font-semibold text-gray-800 mb-4">Estudiantes por Materia</h3>
+                    <div class="space-y-6">
+                        {% for materia, estudiantes in estudiantes_por_materia.items %}
+                        <div class="border rounded-lg p-4">
+                            <div class="flex items-center justify-between mb-3">
+                                <h4 class="font-semibold text-gray-800">{{ materia.nombre }}</h4>
+                                <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+                                    {{ estudiantes|length }} estudiantes
+                                </span>
+                            </div>
+                            <div class="space-y-2">
+                                {% for estudiante in estudiantes %}
+                                <div class="text-sm text-gray-600">
+                                    {{ estudiante.usuario.first_name }} {{ estudiante.usuario.last_name }}
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Additional Information Section -->
+                <div class="bg-white rounded-lg shadow-lg p-6">
+                    <h3 class="text-xl font-semibold text-gray-800 mb-4">Información Relevante</h3>
+                    
+                    <!-- Announcements -->
+                    <div class="mb-6">
+                        <h4 class="font-semibold text-gray-700 mb-3">Anuncios Recientes</h4>
+                        <div class="space-y-4">
+                            {% for announcement in announcements %}
+                            <div class="border-l-4 border-blue-600 pl-4 py-2">
+                                <p class="text-sm text-gray-800">{{ announcement.content }}</p>
+                                <span class="text-xs text-gray-500">{{ announcement.date }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Quick Links -->
+                    <div class="mb-6">
+                        <h4 class="font-semibold text-gray-700 mb-3">Enlaces Rápidos</h4>
+                        <ul class="space-y-2">
+                            <li>
+                                <a href="#" class="text-sm text-blue-600 hover:text-blue-800 flex items-center">
+                                    <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z"/>
+                                        <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"/>
+                                    </svg>
+                                    Manual del Usuario
+                                </a>
+                            </li>
+                            <li>
+                                <a href="#" class="text-sm text-blue-600 hover:text-blue-800 flex items-center">
+                                    <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
+                                    </svg>
+                                    Centro de Ayuda
+                                </a>
+                            </li>
+                            <li>
+                                <a href="#" class="text-sm text-blue-600 hover:text-blue-800 flex items-center">
+                                    <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"/>
+                                        <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"/>
+                                    </svg>
+                                    Contacto Soporte
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- System Status -->
+                    <div>
+                        <h4 class="font-semibold text-gray-700 mb-3">Estado del Sistema</h4>
+                        <div class="flex items-center space-x-2">
+                            <span class="h-3 w-3 bg-green-500 rounded-full"></span>
+                            <span class="text-sm text-gray-600">Todos los servicios operativos</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="flex flex-col lg:flex-row gap-8">
+            <!-- Main Content - Módulos Grid -->
+            <div class="lg:w-2/3">
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-2">Sistema de Gestión Académica</h2>
+                    <div class="h-1 w-24 bg-blue-600"></div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {% for module_data in modules %}
+                    <div class="bg-white rounded-lg shadow-lg transition-transform duration-300 hover:scale-105">
+                        <div class="p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="p-3 bg-blue-100 rounded-full">
+                                    <i class="{{ module_data.icon }} text-2xl text-blue-600"></i>
+                                </div>
+                                <span class="text-xs font-semibold text-gray-500">{{ module_data.code }}</span>
+                            </div>
+                            <h3 class="text-xl font-semibold text-gray-800 mb-2">{{ module_data.name }}</h3>
+                            <p class="text-gray-600 text-sm mb-4">{{ module_data.description }}</p>
+                            
+                            <a href="{{ module_data.url }}" 
+                               class="inline-flex items-center justify-center w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-300">
+                                <span>Acceder</span>
+                                <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                </svg>
+                            </a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Sidebar with Photos and Additional Info -->
+            <div class="lg:w-1/3">
+                <!-- Photo Gallery Section -->
+                <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+                    <h3 class="text-xl font-semibold text-gray-800 mb-4">Galería Institucional</h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        {% for i in "123456" %}
+                        <div class="relative aspect-square overflow-hidden rounded-lg">
+                            <img src="{% static 'img/gallery/institution_'|add:i|add:'.jpg' %}" 
+                                 alt="Imagen institucional {{ i }}"
+                                 class="object-cover w-full h-full hover:scale-110 transition-transform duration-300">
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Additional Information Section -->
+                <div class="bg-white rounded-lg shadow-lg p-6">
+                    <h3 class="text-xl font-semibold text-gray-800 mb-4">Información Relevante</h3>
+                    
+                    <!-- Announcements -->
+                    <div class="mb-6">
+                        <h4 class="font-semibold text-gray-700 mb-3">Anuncios Recientes</h4>
+                        <div class="space-y-4">
+                            {% for announcement in announcements %}
+                            <div class="border-l-4 border-blue-600 pl-4 py-2">
+                                <p class="text-sm text-gray-800">{{ announcement.content }}</p>
+                                <span class="text-xs text-gray-500">{{ announcement.date }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Quick Links -->
+                    <div class="mb-6">
+                        <h4 class="font-semibold text-gray-700 mb-3">Enlaces Rápidos</h4>
+                        <ul class="space-y-2">
+                            <li>
+                                <a href="#" class="text-sm text-blue-600 hover:text-blue-800 flex items-center">
+                                    <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z"/>
+                                        <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"/>
+                                    </svg>
+                                    Manual del Usuario
+                                </a>
+                            </li>
+                            <li>
+                                <a href="#" class="text-sm text-blue-600 hover:text-blue-800 flex items-center">
+                                    <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
+                                    </svg>
+                                    Centro de Ayuda
+                                </a>
+                            </li>
+                            <li>
+                                <a href="#" class="text-sm text-blue-600 hover:text-blue-800 flex items-center">
+                                    <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"/>
+                                        <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"/>
+                                    </svg>
+                                    Contacto Soporte
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- System Status -->
+                    <div>
+                        <h4 class="font-semibold text-gray-700 mb-3">Estado del Sistema</h4>
+                        <div class="flex items-center space-x-2">
+                            <span class="h-3 w-3 bg-green-500 rounded-full"></span>
+                            <span class="text-sm text-gray-600">Todos los servicios operativos</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,55 @@
+{% extends 'components/base.html' %}
+
+{% block content %}
+<div x-data="" class="max-w-4xl mx-auto bg-white shadow-lg rounded-xl border border-gray-100 p-6">
+    <div class="flex flex-col md:flex-row items-center space-y-6 md:space-y-0 md:space-x-8">
+        <!-- Profile Image Section -->
+        <div class="w-36 h-36 relative">
+            <div class="w-full h-full rounded-full overflow-hidden border-4 border-primary-200 shadow-md">
+                {% if user.profile_image %}
+                    <img src="{{ user.profile_image.url }}" 
+                         class="w-full h-full object-cover" 
+                         alt="{{ user.get_full_name }}">
+                {% else %}
+                    <div class="w-full h-full bg-primary-100 flex items-center justify-center text-4xl font-bold text-primary-600">
+                        {{ user.get_full_name|slice:":1"|upper }}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Profile Details Section -->
+        <div class="flex-1 w-full">
+            <div class="space-y-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">{{ user.get_full_name }}</h2>
+                    <p class="text-gray-500">{{ user.email }}</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-sm text-gray-600 font-medium">Teléfono</label>
+                        <p class="text-gray-800 font-semibold">
+                            {{ user.phone|default:'No registrado' }}
+                        </p>
+                    </div>
+                    <div>
+                        <label class="text-sm text-gray-600 font-medium">Dirección</label>
+                        <p class="text-gray-800 font-semibold">
+                            {{ user.address|default:'No registrada' }}
+                        </p>
+                    </div>
+                </div>
+
+                <div class="mt-6">
+                    <a href="{% url 'users:user_profile_edit' %}" 
+                       class="inline-flex items-center px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition">
+                        <i class="fas fa-edit mr-2"></i>
+                        Editar Perfil
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

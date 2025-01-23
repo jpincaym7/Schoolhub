@@ -1,0 +1,137 @@
+{% extends "components/base.html" %}
+{% load static %}
+
+{% block title %}Gestión de Materias - SchoolHub{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
+<style>
+    .card-hover { transition: all 0.3s ease; }
+    .card-hover:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+    .subject-card {
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<input type="hidden" id="permissionsData" value="{{ permissions_json }}">
+
+<div class="space-y-6">
+    <!-- Header Section -->
+    <div class="flex justify-between items-center">
+        <h1 class="text-2xl font-bold text-gray-800">
+            <i class="fas fa-book-open mr-2"></i>Gestión de Materias
+        </h1>
+        <button id="newSubjectBtn" 
+                class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition flex items-center">
+            <i class="fas fa-plus mr-2"></i>Nueva Materia
+        </button>
+    </div>
+
+    <!-- Filters Section -->
+    <div class="glass-effect p-4 rounded-lg">
+        <form id="filterForm" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Buscar</label>
+                <div class="mt-1 relative rounded-md shadow-sm">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="fas fa-search text-gray-400"></i>
+                    </div>
+                    <input type="text" name="search"
+                           class="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md"
+                           placeholder="Buscar por nombre o código...">
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Horas Semanales</label>
+                <select name="horas"
+                        class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                    <option value="">Todas</option>
+                    <option value="2">2 horas</option>
+                    <option value="4">4 horas</option>
+                    <option value="6">6 horas</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Especialidad</label>
+                <select name="especialidad"
+                        class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md focus:ring-blue-500">
+                    <option value="">Todas</option>
+                    {% for especialidad in especialidades %}
+                        <option value="{{ especialidad.id }}">{{ especialidad.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </form>
+    </div>
+
+    <!-- Subjects Grid -->
+    <div id="subjectsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Subject cards will be dynamically inserted here -->
+    </div>
+
+    <!-- Modal Form -->
+    <div id="subjectModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center hidden">
+        <div class="glass-effect p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
+            <h2 id="modalTitle" class="text-xl font-bold text-gray-800 mb-4">Nueva Materia</h2>
+            <form id="subjectForm" class="space-y-4">
+                {% csrf_token %}
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Nombre</label>
+                    <input type="text" name="nombre" required
+                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Código</label>
+                    <input type="text" name="codigo" required
+                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Descripción</label>
+                    <textarea name="descripcion" required rows="3"
+                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500"></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Horas Semanales</label>
+                    <input type="number" name="horas_semanales" required min="1" max="40"
+                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Especialidad</label>
+                    <select name="especialidad" required
+                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500">
+                        <option value="">Seleccione una especialidad</option>
+                        {% for especialidad in especialidades %}
+                            <option value="{{ especialidad.id }}">{{ especialidad.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button type="button" id="closeModalBtn"
+                            class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
+                        Cancelar
+                    </button>
+                    <button type="submit"
+                            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                        <span id="submitButtonText">Crear Materia</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script type="text/javascript">
+    window.PERMISSIONS_DATA = {{ permissions_json|safe }};
+</script>
+<script src="{% static 'js/subjects.js' %}"></script>
+{% endblock %}

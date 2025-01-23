@@ -1,97 +1,66 @@
+from django.conf import settings
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from django.middleware.csrf import get_token
 from django.contrib.auth import login, logout
-from django.shortcuts import render
+from django.views.decorators.csrf import ensure_csrf_cookie
 from django.utils.decorators import method_decorator
-from django.views.decorators.csrf import csrf_exempt
-from django.urls import reverse
-from django.http import JsonResponse
-import json
+from apps.users.models import Module, User
 from apps.users.serializers import LoginSerializer, UserSerializer
+from django.views.generic import ListView, TemplateView
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.utils.decorators import method_decorator
+
+class LoginTemplateView(TemplateView):
+    template_name = 'security/login.html'  # El template que quieres renderizar
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)  # Aquí puedes pasar el formulario de login al template
+        return context
+
+@ensure_csrf_cookie
+def get_csrf_token(request):
+    return JsonResponse({'detail': 'CSRF cookie set'})
 
 class LoginView(APIView):
     permission_classes = [AllowAny]
     serializer_class = LoginSerializer
-    template_name = 'security/login.html'
 
-    def get_dashboard_url(self, user):
-        """
-        Determina la URL del dashboard según el tipo de usuario.
-        """
-        user_type_mapping = {
-            'admin': 'dashboard',
-            'teacher': 'dashboard',
-            'parent': 'dashboard',
-            'student': 'dashboard',  # Dashboard común para todos los tipos
-        }
-        
-        # Obtener la URL según el tipo de usuario (todos redirigen al mismo dashboard)
-        url_name = user_type_mapping.get(user.user_type, 'dashboard')
-        return reverse(url_name)
-
-    def get(self, request, *args, **kwargs):
-        if request.user.is_authenticated:
-            return JsonResponse({
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+        if serializer.is_valid():
+            user = serializer.validated_data['user']
+            login(request, user)
+            # Utilizar LOGIN_REDIRECT_URL desde la configuración
+            return Response({
                 'success': True,
-                'redirect_url': self.get_dashboard_url(request.user)
+                'user': UserSerializer(user).data,
+                'redirect_url': settings.LOGIN_REDIRECT_URL  # Redirige según la configuración
             })
-        return render(request, self.template_name)
+        return Response(
+            {'success': False, 'message': 'Credenciales inválidas'},
+            status=status.HTTP_401_UNAUTHORIZED
+        )
 
-    @method_decorator(csrf_exempt)
-    def post(self, request, *args, **kwargs):
-        try:
-            # Manejar datos JSON desde la solicitud AJAX
-            if request.content_type == 'application/json':
-                data = json.loads(request.body)
-            else:
-                data = request.POST
-            
-            serializer = self.serializer_class(data=data)
-            
-            if serializer.is_valid():
-                user = serializer.validated_data['user']
-                login(request, user)
-                
-                user_serializer = UserSerializer(user)
-                redirect_url = self.get_dashboard_url(user)
-                
-                return JsonResponse({
-                    'success': True,
-                    'user': user_serializer.data,
-                    'redirect_url': redirect_url
-                })
-            
-            return JsonResponse({
-                'success': False,
-                'message': 'Credenciales inválidas'
-            }, status=401)
-            
-        except json.JSONDecodeError:
-            return JsonResponse({
-                'success': False,
-                'message': 'Formato de datos inválido'
-            }, status=400)
-        except Exception as e:
-            return JsonResponse({
-                'success': False,
-                'message': str(e)
-            }, status=500)
 
 class LogoutView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def post(self, request, *args, **kwargs):
-        try:
-            logout(request)  # Cerrar sesión del usuario
-            return JsonResponse({
-                'success': True,
-                'message': 'Has cerrado sesión correctamente',
-                'redirect_url': reverse('users:login')  # Redirige a la página de login
-            })
-        except Exception as e:
-            return JsonResponse({
-                'success': False,
-                'message': str(e)
-            }, status=500)
+    def post(self, request):
+        logout(request)
+        return Response({
+            'success': True,
+            'message': 'Sesión cerrada correctamente',
+            'redirect_url': '/users/auth/'
+        })
+
+class UserDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        serializer = UserSerializer(request.user)
+        return Response(serializer.data)

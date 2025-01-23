@@ -48,7 +48,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         request = self.context.get('request')
         if request and request.user:
-            if request.user.user_type != 'admin' and attrs.get('user_type') in ['teacher', 'parent']:
+            if request.user.user_type != 'admin' and attrs.get('user_type') in ['teacher', 'estudiante']:
                 raise serializers.ValidationError({
                     "user_type": "Solo los administradores pueden crear usuarios de tipo profesor o representante."
                 })
@@ -64,7 +64,7 @@ class UserUpdateSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         request = self.context.get('request')
         if request and request.user:
-            if request.user.user_type != 'admin' and attrs.get('user_type') in ['teacher', 'parent']:
+            if request.user.user_type != 'admin' and attrs.get('user_type') in ['teacher', 'estudiante']:
                 raise serializers.ValidationError({
                     "user_type": "Solo los administradores pueden modificar usuarios de tipo profesor o representante."
                 })

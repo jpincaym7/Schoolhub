@@ -16,15 +16,15 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import include, path
-from apps.users.views.modules.dashboard import DashboardView
 from django.conf import settings
 from django.conf.urls.static import static
+from apps.home.views import DashboardView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('users/', include('apps.users.urls')),
-    path('subjects/', include('apps.subjects.urls')),
-    path('students/', include('apps.students.urls')),
-    path('communications/', include('apps.communications.urls')),
-    path('', DashboardView.as_view(), name='dashboard'),
+    path('users/', include('apps.users.urls'), name = 'users'),
+    path('subjects/', include('apps.subjects.urls'), name = 'subjects'),
+    path('students/', include('apps.students.urls'), name = 'students'),
+    path('communications/', include('apps.communications.urls'), name = 'communications'),
+    path('', DashboardView.as_view(), name='api_dashboard'),
 ]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

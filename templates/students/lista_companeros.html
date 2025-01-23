@@ -1,0 +1,31 @@
+{% extends "components/base.html" %}
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold mb-6">Mis Compañeros</h1>
+    
+    <div class="bg-white shadow-md rounded-lg p-6">
+        <div class="flex items-center mb-4">
+            <span class="text-xl font-semibold mr-4">Total de Compañeros:</span>
+            <span class="bg-blue-500 text-white px-3 py-1 rounded-full">{{ total_companeros }}</span>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {% for companero in companeros %}
+            <div class="bg-gray-100 p-4 rounded-lg shadow-sm hover:shadow-md transition-shadow">
+                <div class="flex items-center">
+                    <div class="w-12 h-12 bg-blue-400 rounded-full flex items-center justify-center text-white mr-4">
+                        {{ companero.usuario.first_name|slice:":1" }}{{ companero.usuario.last_name|slice:":1" }}
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold">{{ companero.usuario.first_name }} {{ companero.usuario.last_name }}</h3>
+                        <p class="text-gray-600 text-sm">{{ companero.curso.nombre }}</p>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <p class="text-gray-500">No tienes compañeros en este curso.</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

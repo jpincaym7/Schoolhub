@@ -1,0 +1,629 @@
+{% extends 'components/base.html' %}
+{% load static %}
+
+{% block title %}Asignación de Materias{% endblock %}
+
+{% block content %}
+{% csrf_token %}
+<div class="container mx-auto px-4 py-8">
+    <!-- Header Section -->
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">Asignación de Materias</h1>
+            <p class="mt-1 text-sm text-gray-600">Gestione las asignaciones de materias a profesores</p>
+        </div>
+        {% if can_create %}
+        <button 
+            id="btnNewAssignment" 
+            class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-lg shadow-sm transition-all duration-200 flex items-center gap-2 font-medium">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            </svg>
+            Nueva Asignación
+        </button>
+        {% endif %}
+    </div>
+
+    <!-- Search Section -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
+        <form method="GET" class="flex gap-4 items-end">
+            <div class="flex-1">
+                <label for="search" class="block text-sm font-medium text-gray-700 mb-1">Búsqueda</label>
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </div>
+                    <input 
+                        type="text" 
+                        name="search" 
+                        id="search" 
+                        value="{{ search }}"
+                        placeholder="Buscar por profesor, materia o curso..." 
+                        class="pl-10 w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button 
+                    type="submit" 
+                    class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-5 py-2.5 rounded-lg shadow-sm transition-all duration-200 font-medium">
+                    Buscar
+                </button>
+                {% if search %}
+                <a 
+                    href="{% url 'asignacion_list' %}" 
+                    class="bg-gray-50 hover:bg-gray-100 text-gray-700 px-5 py-2.5 rounded-lg shadow-sm transition-all duration-200 font-medium">
+                    Limpiar
+                </a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <!-- Assignments Table -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Profesor</th>
+                        <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Materia</th>
+                        <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Curso</th>
+                        <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Período</th>
+                        <th class="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for asignacion in asignaciones %}
+                    <tr class="hover:bg-gray-50 transition-colors duration-150">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-900">{{ asignacion.profesor }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900">{{ asignacion.materia.nombre }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900">{{ asignacion.curso.nombre }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900">{{ asignacion.periodo.nombre }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <div class="flex justify-end gap-3">
+                                <button 
+                                    type="button"
+                                    class="text-indigo-600 hover:text-indigo-900 transition-colors duration-200 edit-btn flex items-center gap-1"
+                                    data-id="{{ asignacion.id }}"
+                                    {% if not can_edit %}disabled{% endif %}>
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                    </svg>
+                                    Editar
+                                </button>
+                                <button 
+                                    type="button"
+                                    class="text-red-600 hover:text-red-900 transition-colors duration-200 delete-btn flex items-center gap-1"
+                                    data-id="{{ asignacion.id }}"
+                                    {% if not can_delete %}disabled{% endif %}>
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                    Eliminar
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="px-6 py-8 text-center">
+                            <div class="flex flex-col items-center">
+                                <svg class="w-12 h-12 text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                <p class="text-gray-500 text-lg font-medium">No se encontraron asignaciones</p>
+                                <p class="text-gray-400 text-sm mt-1">Intente con otros criterios de búsqueda o cree una nueva asignación</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if is_paginated %}
+        <div class="bg-white px-6 py-4 border-t border-gray-200">
+            <div class="flex items-center justify-between">
+                <p class="text-sm text-gray-700">
+                    Mostrando
+                    <span class="font-medium">{{ page_obj.start_index }}</span>
+                    a
+                    <span class="font-medium">{{ page_obj.end_index }}</span>
+                    de
+                    <span class="font-medium">{{ paginator.count }}</span>
+                    resultados
+                </p>
+                <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                    {% if page_obj.has_previous %}
+                    <a href="?page={{ page_obj.previous_page_number }}&search={{ search }}" 
+                       class="relative inline-flex items-center px-3 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                        Anterior
+                    </a>
+                    {% endif %}
+                    
+                    {% for num in paginator.page_range %}
+                    {% if page_obj.number == num %}
+                    <span class="relative inline-flex items-center px-4 py-2 border border-indigo-500 bg-indigo-50 text-sm font-medium text-indigo-600">
+                        {{ num }}
+                    </span>
+                    {% else %}
+                    <a href="?page={{ num }}&search={{ search }}" 
+                       class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                        {{ num }}
+                    </a>
+                    {% endif %}
+                    {% endfor %}
+
+                    {% if page_obj.has_next %}
+                    <a href="?page={{ page_obj.next_page_number }}&search={{ search }}" 
+                       class="relative inline-flex items-center px-3 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                        Siguiente
+                    </a>
+                    {% endif %}
+                </nav>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal Templates -->
+<template id="assignmentModal">
+    <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity z-40"></div>
+    <div class="fixed inset-0 z-50 overflow-y-auto">
+        <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+            <div class="relative transform overflow-hidden rounded-xl bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg">
+                <form id="assignmentForm" class="p-6">
+                    <div class="mb-6">
+                        <h3 class="text-xl font-semibold text-gray-900" id="modalTitle">Nueva Asignación</h3>
+                        <p class="mt-1 text-sm text-gray-500">Complete los campos para crear una nueva asignación</p>
+                    </div>
+                    
+                    <div class="space-y-5">
+                        <input type="hidden" name="id" id="assignmentId">
+                        
+                        <div class="space-y-1">
+                            <label for="profesor" class="block text-sm font-medium text-gray-700">Profesor</label>
+                            <select name="profesor" id="profesor" required
+                                class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                <option value="">Seleccione un profesor</option>
+                            </select>
+                        </div>
+
+                        <div class="space-y-1">
+                            <label for="materia" class="block text-sm font-medium text-gray-700">Materia</label>
+                            <select name="materia" id="materia" required
+                                class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                <option value="">Seleccione una materia</option>
+                            </select>
+                        </div>
+
+                        <div class="space-y-1">
+                            <label for="curso" class="block text-sm font-medium text-gray-700">Curso</label>
+                            <select name="curso" id="curso" required
+                                class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                <option value="">Seleccione un curso</option>
+                            </select>
+                        </div>
+
+                        <div class="space-y-1">
+                            <label for="periodo" class="block text-sm font-medium text-gray-700">Período</label>
+                            <select name="periodo" id="periodo" required
+                                class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                <option value="">Seleccione un período</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mt-8 flex justify-end gap-3">
+                        <button type="button" class="cancel-modal-btn px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            Cancelar
+                        </button>
+                        <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-lg shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            Guardar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</template>
+
+<!-- Delete Confirmation Modal Template -->
+<template id="deleteConfirmModal">
+    <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity z-40"></div>
+    <div class="fixed inset-0 z-50 overflow-y-auto">
+        <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+            <div class="relative transform overflow-hidden rounded-xl bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg">
+                <div class="bg-white px-6 pb-6 pt-8">
+                    <div class="sm:flex sm:items-start">
+                        <div class="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+                            <svg class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                            </svg>
+                        </div>
+                        <div class="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left">
+                            <h3 class="text-lg font-semibold text-gray-900">Confirmar Eliminación</h3>
+                            <div class="mt-2">
+                                <p class="text-sm text-gray-500">¿Está seguro que desea eliminar esta asignación? Esta acción no se puede deshacer y podría afectar a los registros relacionados.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-50 px-6 py-4 sm:flex sm:flex-row-reverse sm:px-6">
+                    <button type="button" class="confirm-delete-btn inline-flex w-full justify-center rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 sm:ml-3 sm:w-auto">
+                        Eliminar
+                    </button>
+                    <button type="button" class="cancel-modal-btn mt-3 inline-flex w-full justify-center rounded-lg bg-white px-4 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto">
+                        Cancelar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+
+<!-- Toast Notification Template -->
+<template id="toastTemplate">
+    <div class="fixed bottom-4 right-4 z-50 transform transition-transform duration-300 ease-in-out translate-y-full">
+        <div class="bg-white rounded-lg shadow-lg p-4 max-w-md flex items-center gap-3 border border-gray-100">
+            <div class="flex-shrink-0">
+                <svg class="toast-icon h-5 w-5" viewBox="0 0 20 20" fill="currentColor"></svg>
+            </div>
+            <p class="toast-message text-sm font-medium text-gray-900"></p>
+            <button class="toast-close ml-auto hover:bg-gray-100 rounded-full p-1 transition-colors duration-200">
+                <svg class="h-4 w-4 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                </svg>
+            </button>
+        </div>
+    </div>
+</template>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Constants and Utilities
+        const CSRF_TOKEN = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
+        let currentDeleteId = null;
+        const profesores = {{ profesores_json|safe }};
+        const materias = {{ materias_json|safe }};
+        const cursos = {{ cursos_json|safe }};
+        const periodos = {{ periodos_json|safe }};
+
+        // Improved Toast Notification
+        const showToast = (message, type = 'success') => {
+            const template = document.getElementById('toastTemplate');
+            const toast = template.content.cloneNode(true).querySelector('div');
+            const icon = toast.querySelector('.toast-icon');
+            
+            toast.querySelector('.toast-message').textContent = message;
+            
+            if (type === 'success') {
+                icon.innerHTML = `<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />`;
+                toast.querySelector('.toast-icon').classList.add('text-green-500');
+                toast.querySelector('.toast-message').classList.add('text-green-800');
+            } else {
+                icon.innerHTML = `<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />`;
+                toast.querySelector('.toast-icon').classList.add('text-red-500');
+                toast.querySelector('.toast-message').classList.add('text-red-800');
+            }
+    
+            document.body.appendChild(toast);
+            
+            // Animate entrance
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-y-full');
+                toast.classList.add('translate-y-0');
+            });
+    
+            // Auto dismiss
+            const dismissToast = () => {
+                toast.classList.add('translate-y-full');
+                setTimeout(() => toast.remove(), 300);
+            };
+    
+            setTimeout(dismissToast, 5000);
+    
+            // Close button handler
+            toast.querySelector('.toast-close').addEventListener('click', dismissToast);
+        };
+
+        // Enhanced Modal Management
+        const showModal = (template) => {
+            const modalContent = template.content.cloneNode(true);
+            const modalElements = Array.from(modalContent.children);
+            
+            // Add modal to DOM
+            modalElements.forEach(element => {
+                document.body.appendChild(element);
+                // Animate entrance
+                requestAnimationFrame(() => {
+                    element.classList.remove('opacity-0');
+                    element.classList.add('opacity-100');
+                });
+            });
+            
+            // Prevent body scroll
+            document.body.style.overflow = 'hidden';
+            
+            const modal = {
+                elements: modalElements,
+                remove: () => {
+                    // Animate exit
+                    modalElements.forEach(element => {
+                        element.classList.add('opacity-0');
+                        setTimeout(() => {
+                            element.remove();
+                            document.body.style.overflow = '';
+                        }, 300);
+                    });
+                }
+            };
+            
+            // Setup close handlers
+            modalElements.forEach(element => {
+                element.querySelectorAll('.cancel-modal-btn').forEach(btn => {
+                    btn.addEventListener('click', () => modal.remove());
+                });
+                
+                // Close on background click
+                if (element.classList.contains('fixed')) {
+                    element.addEventListener('click', (e) => {
+                        if (e.target === element) {
+                            modal.remove();
+                        }
+                    });
+                }
+            });
+            
+            return modal;
+        };
+
+        // Enhanced Select Population
+        const populateSelectOptions = (form) => {
+            const selects = {
+                profesor: form.querySelector('#profesor'),
+                materia: form.querySelector('#materia'),
+                curso: form.querySelector('#curso'),
+                periodo: form.querySelector('#periodo')
+            };
+        
+            Object.entries(selects).forEach(([key, select]) => {
+                select.innerHTML = `<option value="">Seleccione ${key}</option>`;
+                
+                const data = {
+                    profesor: profesores,
+                    materia: materias,
+                    curso: cursos,
+                    periodo: periodos
+                }[key];
+                
+                if (data?.length) {
+                    data.forEach(item => {
+                        const option = new Option(item.nombre, item.id);
+                        select.add(option);
+                    });
+                }
+
+                // Add change handlers for validation
+                select.addEventListener('change', () => {
+                    select.classList.toggle('border-red-500', !select.value);
+                });
+            });
+        };
+
+        // Improved Form Submission Handler
+        const handleAssignment = async (e) => {
+            e.preventDefault();
+            const form = e.target;
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const id = form.querySelector('#assignmentId').value;
+            const isEdit = !!id;
+
+            // Disable submit button and show loading state
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = `
+                <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Guardando...
+            `;
+    
+            try {
+                const formData = {
+                    profesor: form.querySelector('#profesor').value,
+                    materia: form.querySelector('#materia').value,
+                    curso: form.querySelector('#curso').value,
+                    periodo: form.querySelector('#periodo').value
+                };
+
+                // Validate all fields
+                const emptyFields = Object.entries(formData)
+                    .filter(([_, value]) => !value)
+                    .map(([key]) => key);
+
+                if (emptyFields.length) {
+                    emptyFields.forEach(field => {
+                        form.querySelector(`#${field}`).classList.add('border-red-500');
+                    });
+                    throw new Error('Por favor complete todos los campos requeridos');
+                }
+    
+                const response = await fetch(`/subjects/api-asignaciones/${id ? `${id}/` : ''}`, {
+                    method: id ? 'PUT' : 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': CSRF_TOKEN
+                    },
+                    body: JSON.stringify(formData)
+                });
+    
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Error al guardar la asignación');
+                }
+    
+                showToast(`Asignación ${isEdit ? 'actualizada' : 'creada'} exitosamente`);
+                setTimeout(() => window.location.reload(), 1000);
+            } catch (error) {
+                showToast(error.message, 'error');
+                // Reset submit button
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = `
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    Guardar
+                `;
+            }
+        };
+
+        // Initialize Event Listeners
+        const initializeEventListeners = () => {
+            // New Assignment Button
+            document.getElementById('btnNewAssignment')?.addEventListener('click', () => {
+                const modal = showModal(document.getElementById('assignmentModal'));
+                const form = modal.elements.find(el => el.querySelector('#assignmentForm'))?.querySelector('#assignmentForm');
+                
+                if (form) {
+                    populateSelectOptions(form);
+                    form.addEventListener('submit', handleAssignment);
+                }
+            });
+
+            // Edit Assignment Buttons
+            document.querySelectorAll('.edit-btn').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const id = btn.dataset.id;
+                    
+                    try {
+                        const response = await fetch(`/subjects/api-asignaciones/${id}/`);
+                        if (!response.ok) throw new Error('Error al cargar la asignación');
+                        
+                        // Show loading state
+                        btn.innerHTML = `
+                            <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                        `;
+                        
+                        const data = await response.json();
+                        const modal = showModal(document.getElementById('assignmentModal'));
+                        
+                        const form = modal.elements.find(el => 
+                            el.querySelector('#assignmentForm')
+                        )?.querySelector('#assignmentForm');
+                        
+                        if (form) {
+                            // Update modal title and populate form
+                            form.querySelector('#modalTitle').textContent = 'Editar Asignación';
+                            form.querySelector('#assignmentId').value = id;
+                            
+                            // Populate select options and set values
+                            populateSelectOptions(form);
+                            
+                            // Set timeout to ensure options are populated
+                            setTimeout(() => {
+                                form.querySelector('#profesor').value = data.profesor;
+                                form.querySelector('#materia').value = data.materia;
+                                form.querySelector('#curso').value = data.curso;
+                                form.querySelector('#periodo').value = data.periodo;
+                            }, 100);
+                            
+                            form.addEventListener('submit', handleAssignment);
+                        }
+
+                        // Reset button state
+                        btn.innerHTML = `
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                            </svg>
+                            Editar
+                        `;
+                    } catch (error) {
+                        showToast(error.message, 'error');
+                    }
+                });
+            });
+
+            // Delete Assignment Buttons
+            document.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    currentDeleteId = btn.dataset.id;
+                    const modal = showModal(document.getElementById('deleteConfirmModal'));
+                    
+                    const confirmBtn = modal.elements[1].querySelector('.confirm-delete-btn');
+                    if (confirmBtn) {
+                        confirmBtn.addEventListener('click', async () => {
+                            // Show loading state
+                            confirmBtn.disabled = true;
+                            confirmBtn.innerHTML = `
+                                <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Eliminando...
+                            `;
+                            
+                            try {
+                                const response = await fetch(`/subjects/api-asignaciones/${currentDeleteId}/`, {
+                                    method: 'DELETE',
+                                    headers: {
+                                        'X-CSRFToken': CSRF_TOKEN
+                                    }
+                                });
+
+                                if (!response.ok) {
+                                    throw new Error('Error al eliminar la asignación');
+                                }
+                                
+                                modal.remove();
+                                showToast('Asignación eliminada exitosamente');
+                                setTimeout(() => window.location.reload(), 1000);
+                            } catch (error) {
+                                showToast(error.message, 'error');
+                                // Reset button state
+                                confirmBtn.disabled = false;
+                                confirmBtn.innerHTML = 'Eliminar';
+                            }
+                        });
+                    }
+                });
+            });
+
+            // Keyboard handlers for modals
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    const modalBackdrops = document.querySelectorAll('.fixed.inset-0');
+                    if (modalBackdrops.length) {
+                        modalBackdrops.forEach(el => el.remove());
+                        document.body.style.overflow = '';
+                    }
+                }
+            });
+        };
+
+        // Initialize all event listeners
+        initializeEventListeners();
+    });
+</script>
+{% endblock %}
