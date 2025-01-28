@@ -101,18 +101,20 @@
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
 
-    .meeting-request-btn {
-        background-color: var(--secondary-color);
-        color: white;
-        border: none;
-        padding: 12px 20px;
-        border-radius: 6px;
-        font-weight: 600;
-        transition: background-color 0.3s ease;
+    .no-hours-message {
+        text-align: center;
+        padding: 20px;
+        color: #666;
+        font-size: 0.95rem;
+        line-height: 1.5;
     }
 
-    .meeting-request-btn:hover {
-        background-color: #2c9d4a;
+    .empty-calendar-message {
+        grid-column: span 7;
+        text-align: center;
+        padding: 40px;
+        color: #666;
+        font-style: italic;
     }
 </style>
 {% endblock %}
@@ -142,17 +144,16 @@
                             <p><strong>Hora:</strong> <span x-text="selectedSlot.time"></span></p>
                             <p><strong>Especialidad:</strong> <span x-text="selectedSlot.especialidad"></span></p>
                         </div>
-                        <button 
-                            @click="requestMeeting()"
-                            class="mt-6 w-full meeting-request-btn"
-                        >
-                            Solicitar Reunión
-                        </button>
                     </div>
                 </template>
-                <template x-if="!selectedSlot">
+                <template x-if="!selectedSlot && !loading">
                     <div class="text-center text-gray-500">
                         Selecciona un horario para ver detalles
+                    </div>
+                </template>
+                <template x-if="loading">
+                    <div class="text-center text-gray-500">
+                        Cargando...
                     </div>
                 </template>
             </div>
@@ -166,15 +167,27 @@
             </div>
 
             <div class="calendar-grid">
-                <template x-for="(slot, index) in weekSlots" :key="index">
-                    <div 
-                        :class="[
-                            'calendar-slot',
-                            slot.available ? 'slot-available' : 'slot-unavailable'
-                        ]"
-                        @click="slot.available && showSlotDetails(slot)"
-                    >
-                        <span x-text="slot.time"></span>
+                <template x-if="weekSlots.length > 0">
+                    <template x-for="(slot, index) in weekSlots" :key="index">
+                        <div 
+                            :class="[
+                                'calendar-slot',
+                                slot.available ? 'slot-available' : 'slot-unavailable'
+                            ]"
+                            @click="slot.available && showSlotDetails(slot)"
+                        >
+                            <span x-text="slot.time"></span>
+                        </div>
+                    </template>
+                </template>
+                <template x-if="weekSlots.length === 0 && !loading">
+                    <div class="empty-calendar-message">
+                        <template x-if="selectedProfesor">
+                            El profesor seleccionado no tiene horarios de atención disponibles
+                        </template>
+                        <template x-if="!selectedProfesor">
+                            Seleccione un profesor para ver sus horarios de atención
+                        </template>
                     </div>
                 </template>
             </div>
@@ -190,43 +203,27 @@
             selectedProfesor: '',
             selectedSlot: null,
             weekSlots: [],
+            loading: false,
 
             async fetchOfficeHours() {
+                this.loading = true;
+                this.selectedSlot = null;
+                this.weekSlots = [];
+
                 try {
                     const response = await fetch(`/subjects/consult-office/?profesor=${this.selectedProfesor}`);
                     const data = await response.json();
-                    this.weekSlots = data.slots;
+                    this.weekSlots = data.slots || [];
                 } catch (error) {
                     console.error('Error fetching office hours:', error);
+                    showToast('Error al cargar los horarios', 'error');
+                } finally {
+                    this.loading = false;
                 }
             },
 
             showSlotDetails(slot) {
                 this.selectedSlot = slot;
-            },
-
-            async requestMeeting() {
-                if (!this.selectedSlot) return;
-
-                try {
-                    const response = await fetch('/api/request-meeting/', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-                        },
-                        body: JSON.stringify(this.selectedSlot)
-                    });
-                    const result = await response.json();
-
-                    if (result.success) {
-                        showToast('Solicitud de reunión enviada', 'success');
-                    } else {
-                        showToast(result.message, 'error');
-                    }
-                } catch (error) {
-                    showToast('Error al solicitar reunión', 'error');
-                }
             }
         }
     }

@@ -2,6 +2,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from apps.users.views.auth import LoginTemplateView, get_csrf_token, LoginView, LogoutView, UserDetailView
 from apps.users.views.modules import ModuleViewSet
+from apps.users.views.restablecimiento import PasswordResetCompleteView, PasswordResetConfirmView, PasswordResetDoneView, PasswordResetView
 from apps.users.views.sender import UserManagementAPIView, UserManagementView, UserViewSet
 from apps.users.views.users import UserProfileDetailView, UserProfileUpdateView  # Asegúrate de importar LoginView
 
@@ -23,4 +24,8 @@ urlpatterns = [
     path('user/', UserDetailView.as_view(), name='user-detail'),
     path('profile/', UserProfileDetailView.as_view(), name='user_profile_detail'),
     path('profile/edit/', UserProfileUpdateView.as_view(), name='user_profile_edit'),
+    path('password-reset/', PasswordResetView.as_view(), name='password_reset'),
+    path('password-reset/done/', PasswordResetDoneView.as_view(), name='password_reset_done'),
+    path('reset/<uidb64>/<token>/', PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
+    path('reset/done/', PasswordResetCompleteView.as_view(), name='password_reset_complete'),
 ]

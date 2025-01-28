@@ -160,6 +160,7 @@ LOGIN_REDIRECT_URL = '/'
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+EMAIL_SUBJECT_PREFIX = '[SchoolHub] '
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST_USER = 'sdrsistema@gmail.com'
 EMAIL_HOST_PASSWORD = 'kmzo bptx mfff msxt'

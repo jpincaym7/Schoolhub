@@ -29,20 +29,51 @@ class AsignacionProfesorSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         """
-        Validate that the assignment is unique and make any additional validations
+        Validación completa de asignaciones de profesores
         """
-        # Check if professor already has this subject assigned in the same course and period
-        if self.instance is None:  # Only for creation
-            existing = AsignacionProfesor.objects.filter(
+        if self.instance is None:  # Solo para creación
+            # Verificar si el profesor ya tiene esta asignación
+            existing_same_professor = AsignacionProfesor.objects.filter(
                 profesor=data['profesor'],
                 materia=data['materia'],
                 curso=data['curso'],
                 periodo=data['periodo']
             ).exists()
             
-            if existing:
-                raise serializers.ValidationError(
-                    _("Esta asignación ya existe para este profesor en el período seleccionado.")
-                )
+            if existing_same_professor:
+                raise serializers.ValidationError({
+                    "error": "duplicate_assignment",
+                    "detail": "Esta asignación ya existe para este profesor en el período seleccionado.",
+                    "code": "duplicate_professor_assignment",
+                    "profesor": str(data['profesor']),
+                    "materia": str(data['materia']),
+                    "curso": str(data['curso']),
+                    "periodo": str(data['periodo'])
+                })
+
+            # Verificar si la materia ya está asignada a otro profesor
+            existing_other_professor = AsignacionProfesor.objects.filter(
+                materia=data['materia'],
+                curso=data['curso'],
+                periodo=data['periodo']
+            ).exclude(profesor=data['profesor']).first()
+            
+            if existing_other_professor:
+                raise serializers.ValidationError({
+                    "error": "subject_already_assigned",
+                    "detail": f"La materia ya está asignada al profesor {existing_other_professor.profesor} en este curso y periodo",
+                    "code": "existing_assignment",
+                    "current_teacher": str(existing_other_professor.profesor),
+                    "subject": str(data['materia']),
+                    "course": str(data['curso']),
+                    "period": str(data['periodo'])
+                })
 
         return data
+
+    def to_representation(self, instance):
+        """
+        Personalizar la representación de la respuesta
+        """
+        representation = super().to_representation(instance)
+        return representation

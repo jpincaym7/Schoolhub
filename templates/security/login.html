@@ -6,14 +6,188 @@
     <title>Iniciar Sesión</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+    <style>
+        .carousel-item {
+            opacity: 0;
+            transition: opacity 1s ease-in-out;
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+        }
+        .carousel-item.active {
+            opacity: 1;
+        }
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+        .floating-element {
+            animation: float 3s ease-in-out infinite;
+        }
+        .form-field {
+            position: relative;
+            margin-bottom: 1.5rem;
+        }
+        .form-field input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            font-size: 1rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 0.5rem;
+            background: transparent;
+            transition: all 0.3s ease;
+            position: relative;
+            z-index: 1;
+        }
+        .form-field input:focus {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+        }
+        .form-field label {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: white;
+            padding: 0 0.25rem;
+            color: #6b7280;
+            transition: all 0.3s ease;
+            transform-origin: left top;
+            pointer-events: none;
+            z-index: 2;
+        }
+        .form-field input:focus + label,
+        .form-field input:not(:placeholder-shown) + label {
+            transform: translateY(-170%) scale(0.85);
+            color: #2563eb;
+            font-weight: 500;
+        }
+        .form-field input:focus::placeholder {
+            color: transparent;
+        }
+        .form-field .field-icon {
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #9ca3af;
+            transition: all 0.3s ease;
+            z-index: 2;
+            cursor: pointer;
+        }
+        .form-field input:focus ~ .field-icon {
+            color: #2563eb;
+        }
+        .form-field .field-background {
+            position: absolute;
+            inset: 0;
+            border-radius: 0.5rem;
+            background: white;
+            transition: all 0.3s ease;
+            z-index: 0;
+        }
+        .form-field:focus-within .field-background {
+            background: #f8fafc;
+        }
+
+        .notification {
+            transform: translateY(-20px);
+            opacity: 0;
+            transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        .notification.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        /* Success notification animation */
+        .success-icon {
+            animation: successAnimation 0.5s ease-in-out;
+        }
+
+        @keyframes successAnimation {
+            0% { transform: scale(0.5); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        /* Error notification shake animation */
+        .error-shake {
+            animation: shakeAnimation 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+        }
+
+        @keyframes shakeAnimation {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-5px); }
+            40%, 80% { transform: translateX(5px); }
+        }
+
+        /* Enhanced Loading Spinner */
+        .loading-spinner {
+            display: none;
+        }
+
+        .spinner-ring {
+            display: inline-block;
+            width: 1.5em;
+            height: 1.5em;
+            border: 3px solid transparent;
+            border-top-color: currentColor;
+            border-radius: 50%;
+            animation: spinnerAnimation 0.8s ease infinite;
+        }
+
+        @keyframes spinnerAnimation {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Button loading state */
+        .btn-loading {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-loading::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 200%;
+            height: 100%;
+            background: linear-gradient(
+                90deg,
+                transparent,
+                rgba(255, 255, 255, 0.2),
+                transparent
+            );
+            animation: loadingShimmer 1.5s infinite;
+        }
+
+        @keyframes loadingShimmer {
+            100% { transform: translateX(100%); }
+        }
+
+    </style>
 </head>
-<body class="bg-gray-100">
+<body class="bg-gray-50">
     <div class="min-h-screen flex">
-        <!-- Left side - Image -->
-        <div class="hidden lg:flex lg:w-1/2 bg-cover bg-center relative" style="background-image: url('/api/placeholder/1000/1000');">
-            <div class="absolute inset-0 bg-gradient-to-t from-blue-600/90 to-blue-400/75 flex flex-col justify-center px-12">
-                <h2 class="text-4xl font-bold text-white mb-4">Bienvenido de vuelta</h2>
-                <p class="text-white/90 text-lg">Accede a tu cuenta para continuar tu aprendizaje y gestionar tus cursos.</p>
+        <!-- Left side - Image Carousel -->
+        <div class="hidden lg:block lg:w-1/2 relative overflow-hidden">
+            <div id="carousel" class="h-full">
+                <div class="carousel-item active" style="background-image: url('https://images.unsplash.com/photo-1498050108023-c5249f4df085?ixlib=rb-1.2.1&auto=format&fit=crop&w=1352&q=80')"></div>
+                <div class="carousel-item" style="background-image: url('https://images.unsplash.com/photo-1517694712202-14dd9538aa97?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80')"></div>
+                <div class="carousel-item" style="background-image: url('https://images.unsplash.com/photo-1519389950473-47ba0277781c?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80')"></div>
+            </div>
+            <div class="absolute inset-0 bg-gradient-to-t from-blue-900/90 via-blue-600/75 to-blue-400/60 flex flex-col justify-center px-12">
+                <div class="floating-element">
+                    <h2 class="text-5xl font-bold text-white mb-6">Bienvenido de vuelta</h2>
+                    <p class="text-white/90 text-xl leading-relaxed">Accede a tu cuenta para continuar tu viaje de aprendizaje y descubrir nuevas oportunidades.</p>
+                </div>
             </div>
         </div>
 
@@ -22,67 +196,96 @@
             <div class="max-w-md w-full space-y-8">
                 <!-- Logo/Header -->
                 <div class="text-center">
-                    <h1 class="text-3xl font-bold text-gray-900">Iniciar Sesión</h1>
-                    <p class="mt-2 text-sm text-gray-600">
-                        ¿No tienes una cuenta? 
-                        <a href="#" class="font-medium text-blue-600 hover:text-blue-500">Regístrate aquí</a>
-                    </p>
+                    <h1 class="text-4xl font-bold text-gray-900 mb-2">Iniciar Sesión</h1>
+                    <p class="text-gray-600">Ingresa tus credenciales para continuar</p>
                 </div>
 
-                <!-- Notifications -->
-                <div id="successAlert" class="hidden bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative" role="alert">
-                    <span class="block sm:inline">Inicio de sesión exitoso.</span>
+                <!-- Enhanced Notifications -->
+                <div id="successAlert" class="notification hidden fixed top-4 right-4 max-w-sm w-full">
+                    <div class="bg-green-50 border-l-4 border-green-400 p-4 rounded-lg shadow-lg flex items-center">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-check-circle text-green-400 text-xl success-icon"></i>
+                        </div>
+                        <div class="ml-3 flex-1">
+                            <p class="text-sm font-medium text-green-800">¡Inicio de sesión exitoso!</p>
+                            <p class="text-sm text-green-700 mt-1">Redirigiendo al dashboard...</p>
+                        </div>
+                        <button class="ml-4 text-green-400 hover:text-green-500" onclick="hideNotification('successAlert')">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
                 </div>
-                <div id="errorAlert" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-                    <span class="block sm:inline">Credenciales inválidas. Por favor, intenta de nuevo.</span>
+
+                <div id="errorAlert" class="notification hidden fixed top-4 right-4 max-w-sm w-full">
+                    <div class="bg-red-50 border-l-4 border-red-400 p-4 rounded-lg shadow-lg flex items-center">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-exclamation-circle text-red-400 text-xl"></i>
+                        </div>
+                        <div class="ml-3 flex-1">
+                            <p class="text-sm font-medium text-red-800">Error de inicio de sesión</p>
+                            <p class="text-sm text-red-700 mt-1">Credenciales inválidas. Por favor, intenta de nuevo.</p>
+                        </div>
+                        <button class="ml-4 text-red-400 hover:text-red-500" onclick="hideNotification('errorAlert')">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Form -->
-                <form id="loginForm" class="mt-8 space-y-6">
-                    <div>
-                        <label for="username" class="block text-sm font-medium text-gray-700">Nombre de usuario</label>
-                        <div class="mt-1 relative">
+                <form id="loginForm" class="mt-8 space-y-8">
+                    <div class="space-y-6">
+                        <!-- Username Input -->
+                        <div class="form-field">
+                            <div class="field-background"></div>
                             <input id="username" name="username" type="text" required
-                                class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                                placeholder="Nombre de usuario">
+                                class="peer"
+                                placeholder="">
+                            <label for="username">
+                                <i class="fas fa-user mr-2 text-sm"></i>
+                                Nombre de usuario
+                            </label>
                         </div>
-                    </div>
-
-                    <!-- Password -->
-                    <div>
-                        <label for="password" class="block text-sm font-medium text-gray-700">Contraseña</label>
-                        <div class="mt-1 relative">
+    
+                        <!-- Password Input -->
+                        <div class="form-field">
+                            <div class="field-background"></div>
                             <input id="password" name="password" type="password" required
-                                class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                                placeholder="••••••••">
-                            <button type="button" id="togglePassword" class="absolute inset-y-0 right-0 flex items-center pr-3">
-                                <i class="fas fa-eye text-gray-400 hover:text-gray-500"></i>
-                            </button>
+                                class="peer"
+                                placeholder="">
+                            <label for="password">
+                                <i class="fas fa-lock mr-2 text-sm"></i>
+                                Contraseña
+                            </label>
+                            <div id="togglePassword" class="field-icon">
+                                <i class="fas fa-eye"></i>
+                            </div>
                         </div>
                     </div>
-
+    
                     <!-- Remember me & Forgot password -->
-                    <div class="flex items-center justify-between">
+                    <div class="flex items-center justify-between mt-8">
                         <div class="flex items-center">
                             <input id="remember-me" name="remember-me" type="checkbox"
-                                class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-                            <label for="remember-me" class="ml-2 block text-sm text-gray-700">
+                                class="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer">
+                            <label for="remember-me" class="ml-2 block text-sm text-gray-700 cursor-pointer">
                                 Recordarme
                             </label>
                         </div>
-                        <a href="#" class="text-sm font-medium text-blue-600 hover:text-blue-500">
+                        <a href="{% url 'users:password_reset' %}" class="text-sm font-medium text-blue-600 hover:text-blue-500">
                             ¿Olvidaste tu contraseña?
                         </a>
                     </div>
-
+    
                     <!-- Submit button -->
-                    <div>
-                        <button type="submit"
-                            class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    <div class="mt-8">
+                        <button type="submit" class="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-500/50 transition-all duration-300">
                             <span class="absolute left-0 inset-y-0 flex items-center pl-3">
-                                <i class="fas fa-sign-in-alt"></i>
+                                <i class="fas fa-sign-in-alt group-hover:translate-x-1 transition-transform duration-200"></i>
                             </span>
-                            Iniciar Sesión
+                            <span class="loading-spinner ml-2">
+                                <span class="spinner-ring"></span>
+                            </span>
+                            <span class="button-text">Iniciar Sesión</span>
                         </button>
                     </div>
                 </form>
@@ -91,37 +294,114 @@
     </div>
 
     <script>
+                // Definir las funciones en el scope global
+        function showNotification(elementId) {
+            const element = document.getElementById(elementId);
+            element.classList.remove('hidden');
+            
+            // Eliminar cualquier temporizador existente
+            if (element.timeoutId) {
+                clearTimeout(element.timeoutId);
+            }
+            
+            setTimeout(() => {
+                element.classList.add('show');
+            }, 10);
+
+            if (elementId === 'errorAlert') {
+                element.querySelector('.bg-red-50').classList.add('error-shake');
+            }
+
+            // Configurar el auto-cierre después de 3 segundos
+            element.timeoutId = setTimeout(() => {
+                hideNotification(elementId);
+            }, 3000);
+        }
+
+        function hideNotification(elementId) {
+            const element = document.getElementById(elementId);
+            
+            // Limpiar cualquier temporizador pendiente
+            if (element.timeoutId) {
+                clearTimeout(element.timeoutId);
+            }
+            
+            element.classList.remove('show');
+            setTimeout(() => {
+                element.classList.add('hidden');
+            }, 500);
+        }
+
+        // El resto del código dentro de DOMContentLoaded
         document.addEventListener('DOMContentLoaded', function() {
+            // Carousel functionality
+            const carousel = document.getElementById('carousel');
+            const items = carousel.getElementsByClassName('carousel-item');
+            let currentItem = 0;
+
+            function nextItem() {
+                items[currentItem].classList.remove('active');
+                currentItem = (currentItem + 1) % items.length;
+                items[currentItem].classList.add('active');
+            }
+
+            // Change image every 5 seconds
+            setInterval(nextItem, 5000);
+
             // Toggle password visibility
             const togglePassword = document.getElementById('togglePassword');
             const passwordInput = document.getElementById('password');
             const eyeIcon = togglePassword.querySelector('i');
-        
+
             togglePassword.addEventListener('click', function() {
                 const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
                 passwordInput.setAttribute('type', type);
                 eyeIcon.classList.toggle('fa-eye');
                 eyeIcon.classList.toggle('fa-eye-slash');
             });
-        
+
             // Handle form submission
             const loginForm = document.getElementById('loginForm');
             const successAlert = document.getElementById('successAlert');
             const errorAlert = document.getElementById('errorAlert');
-        
+            const loadingSpinner = document.querySelector('.loading-spinner');
+            const buttonText = document.querySelector('.button-text');
+
+            // Agregar event listeners para pausar el auto-cierre cuando el mouse está sobre la notificación
+            document.querySelectorAll('.notification').forEach(notification => {
+                notification.addEventListener('mouseenter', () => {
+                    if (notification.timeoutId) {
+                        clearTimeout(notification.timeoutId);
+                    }
+                });
+
+                notification.addEventListener('mouseleave', () => {
+                    notification.timeoutId = setTimeout(() => {
+                        hideNotification(notification.id);
+                    }, 3000);
+                });
+            });
+
             loginForm.addEventListener('submit', async function(e) {
                 e.preventDefault();
-        
+
+                // Show loading state
+                loadingSpinner.style.display = 'inline-block';
+                buttonText.textContent = 'Iniciando sesión...';
+                const submitButton = loginForm.querySelector('button[type="submit"]');
+                submitButton.disabled = true;
+                submitButton.classList.add('btn-loading');
+
                 const formData = {
-                    username: document.getElementById('username').value,  // Usamos 'username' en lugar de 'email'
+                    username: document.getElementById('username').value,
                     password: document.getElementById('password').value
                 };
-        
+
                 try {
-                    // Get CSRF token first
+                    // Get CSRF token
                     const csrfResponse = await fetch('/users/csrf/');
                     
-                    // Then submit login
+                    // Submit login
                     const response = await fetch('/users/login/', {
                         method: 'POST',
                         headers: {
@@ -130,28 +410,33 @@
                         },
                         body: JSON.stringify(formData)
                     });
-        
+
                     const data = await response.json();
-        
+
                     if (data.success) {
-                        successAlert.classList.remove('hidden');
-                        errorAlert.classList.add('hidden');
-                        // Redirect after successful login
+                        showNotification('successAlert');
+                        hideNotification('errorAlert');
+                        
                         setTimeout(() => {
                             window.location.href = data.redirect_url;
-                        }, 1000);
+                        }, 1500);
                     } else {
-                        errorAlert.classList.remove('hidden');
-                        successAlert.classList.add('hidden');
+                        showNotification('errorAlert');
+                        hideNotification('successAlert');
                     }
                 } catch (error) {
                     console.error('Error:', error);
-                    errorAlert.classList.remove('hidden');
-                    successAlert.classList.add('hidden');
+                    showNotification('errorAlert');
+                    hideNotification('successAlert');
+                } finally {
+                    // Reset loading state
+                    loadingSpinner.style.display = 'none';
+                    buttonText.textContent = 'Iniciar Sesión';
+                    submitButton.disabled = false;
+                    submitButton.classList.remove('btn-loading');
                 }
             });
         });
-        
     </script>
 </body>
 </html>
