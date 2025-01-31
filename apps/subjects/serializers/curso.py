@@ -6,15 +6,19 @@ from apps.subjects.models.Curso import Curso
 
 class CursoSerializer(serializers.ModelSerializer):
     nivel_display = serializers.CharField(source='get_nivel_display', read_only=True)
-    especialidad_nombre = serializers.CharField(source='especialidad.nombre', read_only=True)  # Campo para el nombre de la especialidad
-    periodo_nombre = serializers.CharField(source='periodo.nombre', read_only=True)  # Campo para el nombre del periodo
+    especialidad_nombre = serializers.CharField(source='especialidad.nombre', read_only=True)
+    periodo_nombre = serializers.CharField(source='periodo.nombre', read_only=True)
+    trimestres = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
     
     class Meta:
         model = Curso
-        fields = ['id', 'nombre', 'nivel', 'nivel_display', 'especialidad', 'especialidad_nombre', 'periodo', 'periodo_nombre']
+        fields = ['id', 'nombre', 'nivel', 'nivel_display', 'especialidad', 
+                 'especialidad_nombre', 'periodo', 'periodo_nombre', 'trimestres']
         
     def validate(self, data):
         # Validar que el período académico esté activo
+        if not data.get('periodo').activo:
+            raise ValidationError(_('El período académico debe estar activo.'))
         
         # Validar que no exista otro curso con el mismo nivel y especialidad en el mismo periodo
         existing_curso = Curso.objects.filter(

@@ -1,22 +1,32 @@
 import logging
 from rest_framework import serializers, viewsets, status
 from django.db import transaction
-from apps.students.models import Matricula, DetalleMatricula
+
+from apps.students.models import DetalleMatricula, DetalleMatriculaTrimestre, Estudiante, Matricula
 from apps.subjects.models.academic import PeriodoAcademico
 from apps.subjects.models.subject import Materia
-from apps.students.models import Estudiante
 
 logger = logging.getLogger(__name__)
+
+class DetalleMatriculaTrimestreSerializer(serializers.ModelSerializer):
+    trimestre_nombre = serializers.CharField(source='trimestre.get_trimestre_display', read_only=True)
+    
+    class Meta:
+        model = DetalleMatriculaTrimestre
+        fields = ['id', 'trimestre', 'trimestre_nombre']
+        read_only_fields = ['id']
 
 class DetalleMatriculaSerializer(serializers.ModelSerializer):
     nombre_materia = serializers.CharField(source='materia.nombre', read_only=True)
     codigo_materia = serializers.CharField(source='materia.codigo', read_only=True)
     creditos = serializers.IntegerField(source='materia.creditos', read_only=True)
+    detalles_trimestre = DetalleMatriculaTrimestreSerializer(many=True, read_only=True)
 
     class Meta:
         model = DetalleMatricula
-        fields = ['id', 'materia', 'nombre_materia', 'codigo_materia', 'creditos', 'fecha_agregada']
-        read_only_fields = ['fecha_agregada']
+        fields = ['id', 'materia', 'nombre_materia', 'codigo_materia', 
+                 'creditos', 'fecha_agregada', 'detalles_trimestre']
+        read_only_fields = ['fecha_agregada', 'detalles_trimestre']
                
 class MatriculaSerializer(serializers.ModelSerializer):
     detalles = DetalleMatriculaSerializer(
@@ -57,39 +67,40 @@ class MatriculaSerializer(serializers.ModelSerializer):
         return [materia.nombre for materia in obj.materias.all()]
 
     def validate(self, data):
-        """
-        Valida que:
-        1. El estudiante pueda inscribirse en el período dado
-        2. Las materias seleccionadas no estén ya matriculadas
-        3. Evita duplicación de matrículas
-        """
         estudiante = data.get('estudiante')
         periodo = data.get('periodo')
         materias_ids = data.get('materias_ids', [])
+
+        # Verificar que el estudiante tenga un curso asignado
+        if not estudiante.curso:
+            raise serializers.ValidationError(
+                "El estudiante debe tener un curso asignado para poder matricularse."
+            )
+
+        # Verificar que el curso tenga trimestres
+        if not estudiante.curso.trimestres.exists():
+            raise serializers.ValidationError(
+                "El curso del estudiante debe tener trimestres asignados."
+            )
         
-        # Verificar si ya existe una matrícula en este período
+        # Verificar matrícula existente
         existing_matricula = Matricula.objects.filter(
             estudiante=estudiante,
             periodo=periodo
         )
         
-        # Para creación de nueva matrícula
-        if self.instance is None:
-            if existing_matricula.exists():
-                raise serializers.ValidationError(
-                    "El estudiante ya tiene una matrícula en este período."
-                )
+        if self.instance is None and existing_matricula.exists():
+            raise serializers.ValidationError(
+                "El estudiante ya tiene una matrícula en este período."
+            )
         
-        # Validar materias
         if materias_ids:
-            # Verificar existencia de materias
             materias = Materia.objects.filter(id__in=materias_ids)
             if len(materias) != len(materias_ids):
                 raise serializers.ValidationError(
                     "Una o más materias seleccionadas no existen."
                 )
             
-            # Verificar materias ya matriculadas en este período
             already_enrolled = DetalleMatricula.objects.filter(
                 matricula__estudiante=estudiante,
                 matricula__periodo=periodo,
@@ -108,22 +119,16 @@ class MatriculaSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         materias_ids = validated_data.pop('materias_ids', [])
         
-        # Verificar si ya existe una matrícula (evitar duplicación)
         existing_matricula = Matricula.objects.filter(
             estudiante=validated_data['estudiante'],
             periodo=validated_data['periodo']
         ).first()
         
         if existing_matricula:
-            # Actualizar matrícula existente en lugar de crear nueva
             matricula = existing_matricula
-            
-            # Actualizar detalles de materias
-            # Primero eliminar materias existentes que no están en la nueva lista
             existing_details = matricula.detallematricula_set
             existing_details.exclude(materia_id__in=materias_ids).delete()
             
-            # Añadir nuevas materias que no existen
             existing_materia_ids = set(existing_details.values_list('materia_id', flat=True))
             for materia_id in materias_ids:
                 if materia_id not in existing_materia_ids:
@@ -132,14 +137,10 @@ class MatriculaSerializer(serializers.ModelSerializer):
                         materia_id=materia_id
                     )
         else:
-            # Crear nueva matrícula si no existe
             matricula = Matricula.objects.create(**validated_data)
-            
-            # Generar número de matrícula
             matricula.numero_matricula = f"M{matricula.id:06d}"
             matricula.save()
 
-            # Crear detalles de matrícula
             for materia_id in materias_ids:
                 DetalleMatricula.objects.create(
                     matricula=matricula,
@@ -149,22 +150,17 @@ class MatriculaSerializer(serializers.ModelSerializer):
         return matricula
 
     def update(self, instance, validated_data):
-        # Método de actualización similar a la lógica de creación
         materias_ids = validated_data.pop('materias_ids', None)
         
-        # Actualizar los datos principales de la matrícula
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
 
-        # Actualizar las materias si se proporcionaron
         if materias_ids is not None:
-            # Eliminar materias existentes no incluidas en la nueva lista
             instance.detallematricula_set.exclude(
                 materia_id__in=materias_ids
             ).delete()
 
-            # Agregar nuevas materias
             existing_materias = set(
                 instance.detallematricula_set.values_list('materia_id', flat=True)
             )

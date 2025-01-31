@@ -1,67 +1,112 @@
 {% extends "components/base.html" %}
 {% block content %}
-<div x-data="courseDashboard()" class="container mx-auto px-4 py-8">
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Course Card (3D-like) -->
-        <div class="lg:col-span-2 bg-white shadow-lg rounded-2xl p-6 transform transition-transform hover:scale-105">
-            <div class="flex items-center mb-6">
-                <div class="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center mr-4">
-                    <svg class="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M10.394 2.08a1 1 0 00-.788 0l-7 3a1 1 0 000 1.84L5.25 8.051a.999.999 0 01.356-.257l4-1.714a1 1 0 11.788 1.838L10 9.293 14.646 7.02a1 1 0 01.788 1.838l-4.3 1.842 2.606 1.117a1 1 0 010 1.838l-7 3a1 1 0 01-.788 0l-7-3a1 1 0 010-1.838L5.25 11.95a.999.999 0 01.356-.257l4-1.714a1 1 0 11.788 1.838L10 12.293l4.646-2.273a1 1 0 01.788 1.838l-4.3 1.842 2.606 1.117a1 1 0 010 1.838l-7 3a1 1 0 01-.788 0l-7-3a1 1 0 010-1.838L5.25 15.95a.999.999 0 01.356-.257l4-1.714a1 1 0 11.788 1.838L10 16.293l4.646-2.273a1 1 0 01.788 1.838l-4.3 1.842 2.606 1.117a1 1 0 010 1.838l-7 3a1 1 0 01-.788 0l-7-3a1 1 0 010-1.838L5.25 19.95a.999.999 0 01.356-.257l4-1.714a1 1 0 11.788 1.838L10 20.293l4.646-2.273a1 1 0 01.788 1.838l-4.3 1.842 2.606 1.117a1 1 0 010 1.838l-7 3a1 1 0 01-.788 0l-7-3a1 1 0 010-1.838l7-3a1 1 0 01.788 0l7 3z" />
-                    </svg>
-                </div>
-                <h1 class="text-3xl font-bold text-gray-800">{{ curso.nombre }}</h1>
-            </div>
-
-            <div class="grid grid-cols-2 gap-4">
-                <div class="bg-gray-100 p-4 rounded-lg">
-                    <h3 class="text-sm font-medium text-gray-500">Total Materias</h3>
-                    <p class="text-2xl font-bold text-blue-600">{{ materias.count }}</p>
-                </div>
-                <div class="bg-gray-100 p-4 rounded-lg">
-                    <h3 class="text-sm font-medium text-gray-500">Compañeros</h3>
-                    <p class="text-2xl font-bold text-purple-600">{{ total_companeros }}</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Subjects Interaction Panel -->
-        <div class="bg-white shadow-lg rounded-2xl p-6">
-            <h2 class="text-xl font-bold mb-4 text-gray-800">Mis Materias</h2>
-            <div class="space-y-3">
-                {% for materia in materias %}
-                <div 
-                    x-data="{ expanded: false }"
-                    class="border rounded-lg overflow-hidden"
-                >
-                    <div 
-                        @click="expanded = !expanded"
-                        class="flex justify-between items-center p-4 cursor-pointer bg-gray-100 hover:bg-gray-200 transition"
-                    >
-                        <span class="font-medium">{{ materia.nombre }}</span>
-                        <svg 
-                            :class="{'rotate-180': expanded}" 
-                            class="w-5 h-5 transform transition-transform"
-                            fill="currentColor" 
-                            viewBox="0 0 20 20"
-                        >
-                            <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
-                        </svg>
-                    </div>
-                    <div 
-                        x-show="expanded"
-                        x-transition
-                        class="p-4 bg-white"
-                    >
-                        <p class="text-sm text-gray-600">{{ materia.descripcion }}</p>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
+<div x-data="courseDashboard()" class="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 py-8">
+  <div class="container mx-auto px-4">
+    <!-- Hero Section -->
+    <div class="mb-8 text-center">
+      <h1 class="text-4xl md:text-5xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent animate-gradient">
+        {{ curso.nombre }}
+      </h1>
+      <p class="text-gray-600 mt-2">{{ curso.periodo }}</p>
     </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <!-- Main Course Card -->
+      <div class="lg:col-span-2 space-y-6">
+        <!-- Course Stats -->
+        <div class="bg-white rounded-2xl shadow-xl p-6 transform hover:scale-[1.02] transition-all duration-300">
+          <div class="flex items-center space-x-6">
+            <div class="w-20 h-20 rounded-2xl bg-gradient-to-tr from-purple-500 to-pink-500 p-1">
+              <div class="w-full h-full bg-white rounded-xl flex items-center justify-center">
+                <svg class="w-10 h-10 text-purple-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M10.394 2.08a1 1 0 00-.788 0l-7 3a1 1 0 000 1.84L5.25 8.051a.999.999 0 01.356-.257l4-1.714a1 1 0 11.788 1.838L7 9.293l3-1.273a1 1 0 11.788 1.838l-3.5 1.5 2.606 1.117a1 1 0 010 1.838l-7 3a1 1 0 01-.788 0l-7-3a1 1 0 010-1.838L2.25 11.95a.999.999 0 01.356-.257l4-1.714a1 1 0 11.788 1.838L4 13.293l3-1.273a1 1 0 11.788 1.838l-3.5 1.5 2.606 1.117a1 1 0 010 1.838l-7 3a1 1 0 01-.788 0l-7-3a1 1 0 010-1.838L2.25 15.95a.999.999 0 01.356-.257l4-1.714a1 1 0 11.788 1.838L4 17.293l3-1.273a1 1 0 11.788 1.838l-3.5 1.5 2.606 1.117a1 1 0 010 1.838l-7 3a1 1 0 01-.788 0l-7-3z"/>
+                </svg>
+              </div>
+            </div>
+            <div>
+              <h2 class="text-2xl font-bold text-gray-800">Resumen del Curso</h2>
+              <p class="text-gray-500">Periodo Actual</p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-6 mt-8">
+            <div class="bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl p-6 text-white">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-purple-100">Total Materias</p>
+                  <h3 class="text-3xl font-bold mt-1">{{ materias.count }}</h3>
+                </div>
+                <div class="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
+                  <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-gradient-to-br from-pink-500 to-rose-600 rounded-xl p-6 text-white">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-pink-100">Compañeros</p>
+                  <h3 class="text-3xl font-bold mt-1">{{ total_companeros }}</h3>
+                </div>
+                <div class="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
+                  <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Subjects Panel -->
+      <div class="bg-white rounded-2xl shadow-xl p-6">
+        <h2 class="text-2xl font-bold text-gray-800 mb-6">Mis Materias</h2>
+        <div class="space-y-4">
+          {% for materia in materias %}
+          <div x-data="{ expanded: false }" class="transform transition-all duration-300 hover:scale-[1.02]">
+            <div 
+              @click="expanded = !expanded"
+              class="bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 border border-gray-200 rounded-xl cursor-pointer"
+            >
+              <div class="p-4 flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                  <div class="w-2 h-2 rounded-full" :class="expanded ? 'bg-purple-500' : 'bg-gray-300'"></div>
+                  <span class="font-semibold text-gray-700">{{ materia.nombre }}</span>
+                </div>
+                <svg 
+                  :class="{'rotate-180': expanded}" 
+                  class="w-5 h-5 text-gray-500 transform transition-transform duration-300"
+                  fill="currentColor" 
+                  viewBox="0 0 20 20"
+                >
+                  <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                </svg>
+              </div>
+              <div 
+                x-show="expanded"
+                x-transition:enter="transition ease-out duration-300"
+                x-transition:enter-start="opacity-0 transform -translate-y-4"
+                x-transition:enter-end="opacity-100 transform translate-y-0"
+                x-transition:leave="transition ease-in duration-300"
+                x-transition:leave-start="opacity-100 transform translate-y-0"
+                x-transition:leave-end="opacity-0 transform -translate-y-4"
+                class="p-4 border-t border-gray-100"
+              >
+                <p class="text-gray-600">{{ materia.descripcion }}</p>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 {% endblock %}
+
 {% block extra_js %}
 <script>
     function courseDashboard() {
@@ -69,5 +114,17 @@
             // Future interactivity can be added here
         }
     }
-    </script>
+</script>
+
+<style>
+    @keyframes gradient {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
+    .animate-gradient {
+        background-size: 200% auto;
+        animation: gradient 4s linear infinite;
+    }
+</style>
 {% endblock extra_js %}

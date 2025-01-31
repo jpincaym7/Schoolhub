@@ -4,6 +4,7 @@ from apps.subjects.models.academic import PeriodoAcademico
 from apps.users.models import User
 from django.utils.translation import gettext_lazy as _
 from django.core.exceptions import ValidationError
+from django.utils import timezone
 
 # Create your models here.
 class Communication(models.Model):
@@ -41,10 +42,28 @@ class Comportamiento(models.Model):
         unique_together = ['estudiante', 'periodo', 'quimestre']
         
 class Asistencia(models.Model):
-    matricula = models.ForeignKey(Matricula, on_delete=models.CASCADE)
+    matricula = models.ForeignKey('students.Matricula', on_delete=models.CASCADE)
     fecha = models.DateField()
     asistio = models.BooleanField(default=True)
     justificacion = models.TextField(blank=True)
     
     class Meta:
         unique_together = ['matricula', 'fecha']
+        ordering = ['-fecha', 'matricula']
+
+    def clean(self):
+        if self.fecha > timezone.now().date():
+            raise ValidationError({
+                'fecha': 'No se pueden registrar asistencias en fechas futuras.'
+            })
+        
+        # Verificar que la fecha esté dentro del período académico de la matrícula
+        if (self.fecha < self.matricula.periodo.fecha_inicio or 
+            self.fecha > self.matricula.periodo.fecha_fin):
+            raise ValidationError({
+                'fecha': 'La fecha debe estar dentro del período académico.'
+            })
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)

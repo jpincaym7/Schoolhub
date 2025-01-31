@@ -79,6 +79,44 @@ class AsistenciaSerializer(serializers.ModelSerializer):
             })
         
         return data
+    
+class AsistenciaMasivaSerializer(serializers.Serializer):
+    fecha_inicio = serializers.DateField(required=True)
+    fecha_fin = serializers.DateField(required=True)
+    matriculas = serializers.ListField(
+        child=serializers.IntegerField(),
+        required=True
+    )
+    asistencias = serializers.ListField(
+        child=serializers.DictField(),
+        required=True
+    )
+
+    def validate(self, data):
+        fecha_inicio = data['fecha_inicio']
+        fecha_fin = data['fecha_fin']
+        
+        # Validar que el rango de fechas sea válido
+        if fecha_inicio > fecha_fin:
+            raise serializers.ValidationError({
+                'fecha_inicio': 'La fecha de inicio debe ser anterior a la fecha fin.'
+            })
+        
+        # Validar que las fechas no sean futuras
+        today = timezone.now().date()
+        if fecha_inicio > today or fecha_fin > today:
+            raise serializers.ValidationError({
+                'detail': 'No se pueden registrar asistencias en fechas futuras.'
+            })
+        
+        # Validar que el rango no sea mayor a 31 días
+        if (fecha_fin - fecha_inicio).days > 31:
+            raise serializers.ValidationError({
+                'detail': 'El rango de fechas no puede ser mayor a 31 días.'
+            })
+        
+        return data    
+
 class AsistenciaCreateUpdateSerializer(serializers.ModelSerializer):
     estudiante_nombre = serializers.CharField(source='matricula.estudiante.nombre', read_only=True)
     materia_nombre = serializers.CharField(source='matricula.detallematricula_set.first.materia.nombre', read_only=True)

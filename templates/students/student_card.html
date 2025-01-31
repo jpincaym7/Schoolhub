@@ -1,0 +1,51 @@
+{% extends 'components/base.html' %}
+{% load static %}
+
+{% block title %}Portal Académico{% endblock %}
+
+{% block content %}
+<div class="container mx-auto py-12">
+    <div class="max-w-6xl mx-auto">
+        <!-- Header -->
+        <div class="mb-10 text-center">
+            <h1 class="text-3xl font-bold text-gray-800 mb-2">Reportes</h1>
+            <p class="text-gray-600">Bienvenido, {{ user.get_full_name }}</p>
+        </div>
+
+        <!-- Módulos Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <!-- Módulo de Reporte de Materias -->
+            <div class="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
+                <div class="p-8">
+                    <div class="w-16 h-16 bg-primary-100 rounded-2xl flex items-center justify-center mb-6">
+                        <i class="fas fa-book text-3xl text-primary-600"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">Reporte de Aula</h2>
+                    <p class="text-gray-600 mb-8">Accede para visualizar tu aula, y materias que estás cursando.</p>
+                    <a href="{% url 'students:course_dashboard' %}"
+                       class="inline-flex items-center justify-center w-full px-6 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition transform hover:-translate-y-1">
+                        <span class="mr-2">Ver Reporte</span>
+                        <i class="fas fa-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Módulo de Lista de Compañeros -->
+            <div class="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
+                <div class="p-8">
+                    <div class="w-16 h-16 bg-primary-100 rounded-2xl flex items-center justify-center mb-6">
+                        <i class="fas fa-users text-3xl text-primary-600"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">Reporte de Compañeros</h2>
+                    <p class="text-gray-600 mb-8">Consulta la lista de tus compañeros de clase y su información de contacto académico.</p>
+                    <a href="{% url 'students:lista_companeros' %}"
+                       class="inline-flex items-center justify-center w-full px-6 py-3 border-2 border-primary-600 text-primary-600 rounded-xl hover:bg-primary-50 transition transform hover:-translate-y-1">
+                        <span class="mr-2">Ver Compañeros</span>
+                        <i class="fas fa-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,31 +1,111 @@
 {% extends "components/base.html" %}
 {% block content %}
-<div class="container mx-auto px-4 py-8">
-    <h1 class="text-3xl font-bold mb-6">Mis Compañeros</h1>
-    
-    <div class="bg-white shadow-md rounded-lg p-6">
-        <div class="flex items-center mb-4">
-            <span class="text-xl font-semibold mr-4">Total de Compañeros:</span>
-            <span class="bg-blue-500 text-white px-3 py-1 rounded-full">{{ total_companeros }}</span>
+<div class="min-h-screen bg-gray-50 py-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- Header Section -->
+        <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900">Directorio de Compañeros</h1>
+                    <p class="mt-1 text-sm text-gray-500">
+                        {{ curso_actual.get_nivel_display }} - {{ especialidad.nombre }}
+                    </p>
+                </div>
+                <div class="mt-4 md:mt-0">
+                    <span class="inline-flex items-center px-4 py-2 rounded-md text-sm font-medium bg-blue-50 text-blue-700">
+                        <svg class="mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                        {{ total_companeros }} Compañeros
+                    </span>
+                </div>
+            </div>
         </div>
-        
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {% for companero in companeros %}
-            <div class="bg-gray-100 p-4 rounded-lg shadow-sm hover:shadow-md transition-shadow">
-                <div class="flex items-center">
-                    <div class="w-12 h-12 bg-blue-400 rounded-full flex items-center justify-center text-white mr-4">
-                        {{ companero.usuario.first_name|slice:":1" }}{{ companero.usuario.last_name|slice:":1" }}
+
+        <!-- Course Info Card -->
+        <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="flex items-center p-4 bg-gray-50 rounded-lg">
+                    <div class="flex-shrink-0 bg-blue-500 rounded-md p-3">
+                        <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                        </svg>
                     </div>
-                    <div>
-                        <h3 class="text-lg font-semibold">{{ companero.usuario.first_name }} {{ companero.usuario.last_name }}</h3>
-                        <p class="text-gray-600 text-sm">{{ companero.curso.nombre }}</p>
+                    <div class="ml-4">
+                        <h2 class="text-sm font-medium text-gray-500">Curso</h2>
+                        <p class="text-lg font-semibold text-gray-900">{{ curso_actual }}</p>
+                    </div>
+                </div>
+                <div class="flex items-center p-4 bg-gray-50 rounded-lg">
+                    <div class="flex-shrink-0 bg-green-500 rounded-md p-3">
+                        <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <h2 class="text-sm font-medium text-gray-500">Especialidad</h2>
+                        <p class="text-lg font-semibold text-gray-900">{{ especialidad.nombre }}</p>
+                    </div>
+                </div>
+                <div class="flex items-center p-4 bg-gray-50 rounded-lg">
+                    <div class="flex-shrink-0 bg-purple-500 rounded-md p-3">
+                        <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <h2 class="text-sm font-medium text-gray-500">Período</h2>
+                        <p class="text-lg font-semibold text-gray-900">{{ periodo_actual }}</p>
                     </div>
                 </div>
             </div>
-            {% empty %}
-            <p class="text-gray-500">No tienes compañeros en este curso.</p>
-            {% endfor %}
         </div>
+
+        <!-- Directory -->
+        {% if companeros_por_letra %}
+            <div class="space-y-6">
+                {% for letra, grupo in companeros_por_letra.items %}
+                    <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+                        <div class="bg-gray-50 px-6 py-3 border-b border-gray-200">
+                            <h3 class="text-lg font-medium text-gray-900">{{ letra }}</h3>
+                        </div>
+                        <div class="divide-y divide-gray-200">
+                            {% for companero in grupo %}
+                                <div class="p-6 hover:bg-gray-50 transition-colors duration-150">
+                                    <div class="flex items-center">
+                                        <div class="flex-shrink-0">
+                                            <div class="h-12 w-12 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center">
+                                                <span class="text-white font-medium text-lg">
+                                                    {{ companero.usuario.first_name|slice:":1" }}{{ companero.usuario.last_name|slice:":1" }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div class="ml-4">
+                                            <h4 class="text-lg font-medium text-gray-900">
+                                                {{ companero.usuario.first_name }} {{ companero.usuario.last_name }}
+                                            </h4>
+                                            <p class="text-sm text-gray-500">
+                                                Estudiante de {{ curso_actual.get_nivel_display }}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="bg-white rounded-lg shadow-sm p-8 text-center">
+                <div class="inline-block p-4 rounded-full bg-gray-100 mb-4">
+                    <svg class="h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                    </svg>
+                </div>
+                <h3 class="text-lg font-medium text-gray-900">No hay compañeros registrados</h3>
+                <p class="mt-1 text-sm text-gray-500">Actualmente no hay otros estudiantes registrados en tu curso.</p>
+            </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

@@ -5,14 +5,22 @@ from django.core.exceptions import ValidationError
 from decimal import Decimal
 from apps.subjects.models.Curso import Curso
 from apps.subjects.models.Teacher import Profesor
-from apps.subjects.models.academic import PeriodoAcademico
+from apps.subjects.models.academic import PeriodoAcademico, Trimestre
 from apps.subjects.models.subject import Materia
+
+class AsignacionProfesorTrimestre(models.Model):
+    asignacion = models.ForeignKey('AsignacionProfesor', on_delete=models.CASCADE, related_name='asignaciones_trimestre')
+    trimestre = models.ForeignKey(Trimestre, on_delete=models.CASCADE)
+    
+    class Meta:
+        unique_together = ['asignacion', 'trimestre']
 
 class AsignacionProfesor(models.Model):
     profesor = models.ForeignKey(Profesor, on_delete=models.CASCADE)
     materia = models.ForeignKey(Materia, on_delete=models.CASCADE)
     curso = models.ForeignKey(Curso, on_delete=models.CASCADE)
     periodo = models.ForeignKey(PeriodoAcademico, on_delete=models.CASCADE)
+    trimestres = models.ManyToManyField(Trimestre, through=AsignacionProfesorTrimestre)
     
     class Meta:
         unique_together = ['profesor', 'materia', 'curso', 'periodo']
@@ -39,7 +47,17 @@ class AsignacionProfesor(models.Model):
     
     def save(self, *args, **kwargs):
         self.clean()
+        is_new = self.pk is None
         super().save(*args, **kwargs)
+        
+        # Si es una nueva asignación, crear las asignaciones por trimestre
+        if is_new:
+            curso_trimestres = self.curso.trimestres.all()
+            for trimestre in curso_trimestres:
+                AsignacionProfesorTrimestre.objects.get_or_create(
+                    asignacion=self,
+                    trimestre=trimestre
+                )
         
     def __str__(self):
         return f'{self.materia}'

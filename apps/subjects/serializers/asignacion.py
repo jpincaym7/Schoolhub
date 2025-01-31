@@ -1,16 +1,23 @@
-from rest_framework import serializers, viewsets, status
-from rest_framework.response import Response
-from rest_framework.decorators import action
-from django.db import IntegrityError
-from django.core.exceptions import ValidationError
+from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
-from apps.subjects.models.grades import AsignacionProfesor
+
+from apps.subjects.models.grades import AsignacionProfesor, AsignacionProfesorTrimestre
+
+class AsignacionProfesorTrimestreSerializer(serializers.ModelSerializer):
+    trimestre_nombre = serializers.CharField(source='trimestre.get_trimestre_display', read_only=True)
+    
+    class Meta:
+        model = AsignacionProfesorTrimestre
+        fields = ['id', 'trimestre', 'trimestre_nombre']
+        read_only_fields = ['id']
 
 class AsignacionProfesorSerializer(serializers.ModelSerializer):
     profesor_nombre = serializers.CharField(source='profesor.nombre', read_only=True)
     materia_nombre = serializers.CharField(source='materia.nombre', read_only=True)
     curso_nombre = serializers.CharField(source='curso.nombre', read_only=True)
     periodo_nombre = serializers.CharField(source='periodo.nombre', read_only=True)
+    asignaciones_trimestre = AsignacionProfesorTrimestreSerializer(many=True, read_only=True)
 
     class Meta:
         model = AsignacionProfesor
@@ -23,9 +30,10 @@ class AsignacionProfesorSerializer(serializers.ModelSerializer):
             'curso', 
             'curso_nombre',
             'periodo', 
-            'periodo_nombre'
+            'periodo_nombre',
+            'asignaciones_trimestre'
         ]
-        read_only_fields = ['id']
+        read_only_fields = ['id', 'asignaciones_trimestre']
 
     def validate(self, data):
         """
@@ -67,6 +75,14 @@ class AsignacionProfesorSerializer(serializers.ModelSerializer):
                     "subject": str(data['materia']),
                     "course": str(data['curso']),
                     "period": str(data['periodo'])
+                })
+
+            # Verificar que el curso tenga trimestres asignados
+            if not data['curso'].trimestres.exists():
+                raise serializers.ValidationError({
+                    "error": "no_trimestres",
+                    "detail": "El curso seleccionado no tiene trimestres asignados",
+                    "code": "missing_trimestres"
                 })
 
         return data

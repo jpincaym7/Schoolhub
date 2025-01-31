@@ -11,6 +11,10 @@ from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import OrderingFilter, SearchFilter
+from django.db.models.deletion import ProtectedError
+from rest_framework.response import Response
+from rest_framework import status
+
 
 def materia_list(request):
     try:
@@ -119,5 +123,12 @@ class MateriaViewSet(viewsets.ModelViewSet):
 
     @module_permission_required('MAT#123', 'delete')
     def destroy(self, request, *args, **kwargs):
-        return super().destroy(request, *args, **kwargs)
-    
+        instance = self.get_object()
+        try:
+            instance.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except ProtectedError as e:
+            return Response(
+                {"error": str(e.args[0])},
+                status=status.HTTP_400_BAD_REQUEST
+            )

@@ -3,19 +3,15 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from django.core.exceptions import ValidationError
 from decimal import ROUND_DOWN, Decimal
 from apps.students.models import DetalleMatricula
+from apps.subjects.models.academic import Parcial, Trimestre
 from apps.subjects.models.grades import AsignacionProfesor
 
 class Calificacion(models.Model):
-    PARCIAL_CHOICES = [
-        (1, 'Primer Parcial'),
-        (2, 'Segundo Parcial')
-    ]
+    detalle_matricula = models.ForeignKey('students.DetalleMatricula', on_delete=models.CASCADE)
+    asignacion_profesor = models.ForeignKey('subjects.AsignacionProfesor', on_delete=models.CASCADE)
+    parcial = models.ForeignKey(Parcial, on_delete=models.CASCADE)
     
-    detalle_matricula = models.ForeignKey(DetalleMatricula, on_delete=models.CASCADE)
-    asignacion_profesor = models.ForeignKey(AsignacionProfesor, on_delete=models.CASCADE)
-    parcial = models.IntegerField(choices=PARCIAL_CHOICES, default=1)
-    
-    # Notas Parciales (80%)
+    # Notas Parciales (60%)
     tarea1 = models.DecimalField(max_digits=4, decimal_places=2, validators=[MinValueValidator(0), MaxValueValidator(10)], default=1)
     tarea2 = models.DecimalField(max_digits=4, decimal_places=2, validators=[MinValueValidator(0), MaxValueValidator(10)], default=1)
     tarea3 = models.DecimalField(max_digits=4, decimal_places=2, validators=[MinValueValidator(0), MaxValueValidator(10)], default=1)
@@ -24,7 +20,7 @@ class Calificacion(models.Model):
     # Examen Parcial (20%)
     examen = models.DecimalField(max_digits=4, decimal_places=2, validators=[MinValueValidator(0), MaxValueValidator(10)], default=1)
     
-    # Promedio Final
+    # Promedio Final del Parcial
     promedio_final = models.DecimalField(max_digits=4, decimal_places=2, validators=[MinValueValidator(0), MaxValueValidator(10)], default=1, editable=False)
     
     fecha_registro = models.DateTimeField(auto_now_add=True, null=True)
@@ -44,129 +40,142 @@ class Calificacion(models.Model):
             raise ValidationError('Los períodos académicos no coinciden')
 
     @classmethod
-    def crear_calificaciones_periodo(cls, periodo):
+    def crear_calificaciones_trimestre(cls, trimestre):
         from apps.students.models import DetalleMatricula
-        detalles = DetalleMatricula.objects.filter(matricula__periodo=periodo)
+        detalles = DetalleMatricula.objects.filter(matricula__periodo=trimestre.periodo)
         
         for detalle in detalles:
             try:
                 asignacion = AsignacionProfesor.objects.get(
                     materia=detalle.materia,
                     curso=detalle.matricula.estudiante.curso,
-                    periodo=periodo
+                    periodo=trimestre.periodo
                 )
                 
-                # Check existing grades for this subject and student
-                existing_subject_grades = cls.objects.filter(
-                    detalle_matricula=detalle,
-                    asignacion_profesor=asignacion
-                )
+                # Obtener todos los parciales para este trimestre
+                parciales = Parcial.objects.filter(trimestre=trimestre)
                 
-                # Create grades only if no grades exist or all grades are default (one)
-                if not existing_subject_grades.exists() or \
-                all(
-                    calif.tarea1 == 1 and calif.tarea2 == 1 and 
-                    calif.tarea3 == 1 and calif.tarea4 == 1 and 
-                    calif.examen == 1 
-                    for calif in existing_subject_grades
-                ):
-                    for parcial in [1, 2]:
-                        # Check if grade for this partial already exists
-                        existing_partial_grade = cls.objects.filter(
+                for parcial in parciales:
+                    # Comprobar si ya existen calificaciones para este estudiante en este parcial
+                    existing_grade = cls.objects.filter(
+                        detalle_matricula=detalle,
+                        asignacion_profesor=asignacion,
+                        parcial=parcial
+                    ).exists()
+                    
+                    if not existing_grade:
+                        # Solo se crean calificaciones si no existen previamente
+                        cls.objects.create(
                             detalle_matricula=detalle,
                             asignacion_profesor=asignacion,
-                            parcial=parcial
-                        ).exists()
-                        
-                        if not existing_partial_grade:
-                            cls.objects.create(
-                                detalle_matricula=detalle,
-                                asignacion_profesor=asignacion,
-                                parcial=parcial,
-                                tarea1=1,
-                                tarea2=1,
-                                tarea3=1,
-                                tarea4=1,
-                                examen=1
-                            )
-                
+                            parcial=parcial,
+                            tarea1=1,
+                            tarea2=1,
+                            tarea3=1,
+                            tarea4=1,
+                            examen=1
+                        )
+            
             except AsignacionProfesor.DoesNotExist:
-                # Skip if no professor assignment exists for this subject and course
                 continue
 
     def save(self, *args, **kwargs):
-        from apps.subjects.models.activity import PromedioAnual
+        # Definir constantes de peso como Decimales
+        PESO_TAREAS = Decimal('0.70')    # 70% para tareas
+        PESO_EXAMEN = Decimal('0.30')    # 30% para examen
+        PRECISION = Decimal('0.01')      # Precisión de 2 decimales
 
-        # Convert float constants to Decimal
-        peso_tareas = Decimal('0.8')
-        peso_examen = Decimal('0.2')
+        # Calcular promedio de tareas (70%)
+        tareas = [self.tarea1, self.tarea2, self.tarea3, self.tarea4]
+        promedio_tareas = sum(Decimal(str(tarea)) for tarea in tareas) / len(tareas)
+        nota_tareas = (promedio_tareas * PESO_TAREAS).quantize(PRECISION, rounding=ROUND_DOWN)
 
-        # Calcular promedio de tareas (80%)
-        promedio_tareas = (self.tarea1 + self.tarea2 + self.tarea3 + self.tarea4) / 4
-        nota_tareas = promedio_tareas * peso_tareas
-
-        # Calcular nota del examen (20%)
-        nota_examen = self.examen * peso_examen
+        # Calcular nota del examen (30%)
+        nota_examen = (Decimal(str(self.examen)) * PESO_EXAMEN).quantize(PRECISION, rounding=ROUND_DOWN)
 
         # Calcular promedio final
-        self.promedio_final = nota_tareas + nota_examen
+        self.promedio_final = (nota_tareas + nota_examen).quantize(PRECISION, rounding=ROUND_DOWN)
 
-        # Redondear a 2 decimales para evitar errores de validación
-        self.promedio_final = self.promedio_final.quantize(Decimal('0.01'), rounding=ROUND_DOWN)
-
-        # Realizar validaciones personalizadas
         self.full_clean()
-
-        # Guardar la calificación actual
         super().save(*args, **kwargs)
 
-        # Actualizar o crear el PromedioAnual relacionado
-        promedio_anual, created = PromedioAnual.objects.get_or_create(
-            detalle_matricula=self.detalle_matricula,
-            defaults={'promedio_p1': 0, 'promedio_p2': 0}
+        # Actualizar promedio del trimestre
+        self.actualizar_promedio_trimestre()
+
+    def actualizar_promedio_trimestre(self):
+        PromedioTrimestre.actualizar_promedio(
+            self.detalle_matricula,
+            self.parcial.trimestre
         )
 
-        # Actualizar el promedio correspondiente al parcial
-        if self.parcial == 1:
-            promedio_anual.promedio_p1 = self.promedio_final
-        elif self.parcial == 2:
-            promedio_anual.promedio_p2 = self.promedio_final
-
-        # Calcular el promedio final si ambos parciales están completos
-        if promedio_anual.promedio_p1 != 0 and promedio_anual.promedio_p2 != 0:
-            promedio_anual.promedio_final = (
-                promedio_anual.promedio_p1 + promedio_anual.promedio_p2
-            ) / 2
-        else:
-            promedio_anual.promedio_final = 0  # Si falta algún parcial, el promedio final es 0
-
-        promedio_anual.save()
-
     def __str__(self):
-        return f"{self.detalle_matricula.matricula.estudiante} - {self.detalle_matricula.materia} - P{self.parcial}"
+        return f"{self.detalle_matricula.matricula.estudiante} - {self.detalle_matricula.materia} - {self.parcial}"
 
-class PromedioAnual(models.Model):
-    detalle_matricula = models.OneToOneField(DetalleMatricula, on_delete=models.CASCADE)
+class PromedioTrimestre(models.Model):
+    detalle_matricula = models.ForeignKey('students.DetalleMatricula', on_delete=models.CASCADE)
+    trimestre = models.ForeignKey(Trimestre, on_delete=models.CASCADE)
     promedio_p1 = models.DecimalField(max_digits=4, decimal_places=2, validators=[MinValueValidator(0), MaxValueValidator(10)], default=0)
     promedio_p2 = models.DecimalField(max_digits=4, decimal_places=2, validators=[MinValueValidator(0), MaxValueValidator(10)], default=0)
-    promedio_final = models.DecimalField(max_digits=4, decimal_places=2, validators=[MinValueValidator(0), MaxValueValidator(10)], editable=False)
-    
-    def clean(self):
-        # Validación: no permitir guardar el promedio final si aún no hay promedios para los parciales
-        if self.promedio_p1 < 0 or self.promedio_p2 < 0:
-            raise ValidationError('No se puede calcular el promedio final si no existen promedios para los parciales.')
-    
-    def save(self, *args, **kwargs):
-        # Realizar la validación antes de guardar
-        self.full_clean()  # Llama a la validación personalizada de `clean`
-        
-        # Calcular promedio final si los parciales están completos
-        if self.promedio_p1 != 0 and self.promedio_p2 != 0:
-            self.promedio_final = (self.promedio_p1 + self.promedio_p2) / 2
-        else:
-            self.promedio_final = 0  # Si no hay promedios, dejamos el promedio final en 0
+    examen_trimestral = models.DecimalField(max_digits=4, decimal_places=2, validators=[MinValueValidator(0), MaxValueValidator(10)], default=0)
+    promedio_final = models.DecimalField(max_digits=4, decimal_places=2, validators=[MinValueValidator(0), MaxValueValidator(10)], default=0, editable=False)
 
-        super().save(*args, **kwargs)
+    class Meta:
+        unique_together = ['detalle_matricula', 'trimestre']
+
+    @classmethod
+    def actualizar_promedio(cls, detalle_matricula, trimestre):
+        # Constantes de peso para el promedio trimestral
+        PESO_PARCIAL = Decimal('0.35')       # 35% cada parcial
+        PESO_EXAMEN = Decimal('0.30')        # 30% examen trimestral
+        PRECISION = Decimal('0.01')          # Precisión de 2 decimales
+
+        promedio, created = cls.objects.get_or_create(
+            detalle_matricula=detalle_matricula,
+            trimestre=trimestre
+        )
+
+        # Obtener calificaciones del trimestre
+        calificaciones = Calificacion.objects.filter(
+            detalle_matricula=detalle_matricula,
+            parcial__trimestre=trimestre
+        )
+
+        # Calcular promedios por parcial
+        for calif in calificaciones:
+            if calif.parcial.numero == 1:
+                promedio.promedio_p1 = calif.promedio_final
+            elif calif.parcial.numero == 2:
+                promedio.promedio_p2 = calif.promedio_final
+
+        # Calcular promedio final (35% P1 + 35% P2 + 30% Examen trimestral)
+        if all([promedio.promedio_p1, promedio.promedio_p2, promedio.examen_trimestral]):
+            p1 = (Decimal(str(promedio.promedio_p1)) * PESO_PARCIAL).quantize(PRECISION, rounding=ROUND_DOWN)
+            p2 = (Decimal(str(promedio.promedio_p2)) * PESO_PARCIAL).quantize(PRECISION, rounding=ROUND_DOWN)
+            examen = (Decimal(str(promedio.examen_trimestral)) * PESO_EXAMEN).quantize(PRECISION, rounding=ROUND_DOWN)
+            
+            promedio.promedio_final = (p1 + p2 + examen).quantize(PRECISION, rounding=ROUND_DOWN)
         
+        promedio.save()
+
+    def __str__(self):
+        return f"Promedio Trimestral: {self.detalle_matricula.matricula.estudiante} - {self.trimestre}"
+
+class PromedioAnual(models.Model):
+    detalle_matricula = models.OneToOneField('students.DetalleMatricula', on_delete=models.CASCADE)
+    promedio_t1 = models.DecimalField(max_digits=4, decimal_places=2, validators=[MinValueValidator(0), MaxValueValidator(10)], default=0)
+    promedio_t2 = models.DecimalField(max_digits=4, decimal_places=2, validators=[MinValueValidator(0), MaxValueValidator(10)], default=0)
+    promedio_t3 = models.DecimalField(max_digits=4, decimal_places=2, validators=[MinValueValidator(0), MaxValueValidator(10)], default=0)
+    promedio_final = models.DecimalField(max_digits=4, decimal_places=2, validators=[MinValueValidator(0), MaxValueValidator(10)], default=0, editable=False)
+
+    def save(self, *args, **kwargs):
+        PRECISION = Decimal('0.01')  # Precisión de 2 decimales
+
+        if all([self.promedio_t1, self.promedio_t2, self.promedio_t3]):
+            # Calcular promedio final (promedio simple de los tres trimestres)
+            suma = sum(Decimal(str(x)) for x in [self.promedio_t1, self.promedio_t2, self.promedio_t3])
+            self.promedio_final = (suma / 3).quantize(PRECISION, rounding=ROUND_DOWN)
+        
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"Promedio Anual: {self.detalle_matricula.matricula.estudiante} - {self.detalle_matricula.materia}"
