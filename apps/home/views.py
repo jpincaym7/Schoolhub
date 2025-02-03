@@ -42,7 +42,7 @@ class DashboardView(LoginRequiredMixin, TemplateView):
             ).prefetch_related(
                 'curso__especialidad'
             )
-
+            
             # Get students by subject
             estudiantes_por_materia = {}
             for asignacion in asignaciones:
@@ -50,9 +50,11 @@ class DashboardView(LoginRequiredMixin, TemplateView):
                     materia=asignacion.materia,
                 ).select_related('matricula')
                 estudiantes_por_materia[asignacion.materia] = estudiantes
-
+            
             # Get unique courses
             cursos_profesor = list(set(asig.curso for asig in asignaciones))
+            
+            
 
             # Get subject statistics
             estadisticas_materias = {

@@ -204,12 +204,18 @@
             selectedSlot: null,
             weekSlots: [],
             loading: false,
-
+    
+            // Initialization
+            init() {
+                // Fetch office hours immediately when component loads
+                this.fetchOfficeHours();
+            },
+    
             async fetchOfficeHours() {
                 this.loading = true;
                 this.selectedSlot = null;
                 this.weekSlots = [];
-
+    
                 try {
                     const response = await fetch(`/subjects/consult-office/?profesor=${this.selectedProfesor}`);
                     const data = await response.json();
@@ -221,7 +227,7 @@
                     this.loading = false;
                 }
             },
-
+    
             showSlotDetails(slot) {
                 this.selectedSlot = slot;
             }

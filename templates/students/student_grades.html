@@ -22,6 +22,45 @@
         }
     }
 
+    .floating-button {
+        position: fixed;
+        bottom: 2rem;
+        right: 2rem;
+        padding: 1rem 1.5rem;
+        background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+        color: white;
+        border-radius: 1rem;
+        box-shadow: 0 10px 25px -5px rgba(139, 92, 246, 0.5);
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        transition: all 0.3s ease;
+        z-index: 50;
+    }
+
+    .floating-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 15px 30px -5px rgba(139, 92, 246, 0.6);
+    }
+
+    .floating-button:active {
+        transform: translateY(0);
+    }
+
+    .floating-button svg {
+        width: 1.5rem;
+        height: 1.5rem;
+    }
+
+    @media (max-width: 768px) {
+        .floating-button {
+            bottom: 1.5rem;
+            right: 1.5rem;
+            padding: 0.75rem 1.25rem;
+        }
+    }
+
     /* Header Styles */
     .header-section {
         background: linear-gradient(to right, #7c3aed, #4f46e5);
@@ -249,6 +288,14 @@
 {% endblock extra_css %}
 {% block content %}
 <div class="min-h-screen from-indigo-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+
+    <a href="{% url 'communications:calificaciones_estudiante' %}" class="floating-button">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+        Ver Calificaciones Totales
+    </a>
+
     <div class="container mx-auto px-4 py-8">
         <div class="max-w-6xl mx-auto space-y-8">
             <!-- Header Section -->

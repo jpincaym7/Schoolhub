@@ -103,6 +103,7 @@ class PromedioTrimestreSerializer(serializers.ModelSerializer):
             'promedio_p1', 
             'promedio_p2', 
             'examen_trimestral',
+            'proyecto_trimestral',  # Campo agregado
             'promedio_final',
             'estudiante',
             'materia'

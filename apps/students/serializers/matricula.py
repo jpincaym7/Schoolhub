@@ -71,19 +71,16 @@ class MatriculaSerializer(serializers.ModelSerializer):
         periodo = data.get('periodo')
         materias_ids = data.get('materias_ids', [])
 
-        # Verificar que el estudiante tenga un curso asignado
         if not estudiante.curso:
             raise serializers.ValidationError(
                 "El estudiante debe tener un curso asignado para poder matricularse."
             )
 
-        # Verificar que el curso tenga trimestres
         if not estudiante.curso.trimestres.exists():
             raise serializers.ValidationError(
                 "El curso del estudiante debe tener trimestres asignados."
             )
         
-        # Verificar matrícula existente
         existing_matricula = Matricula.objects.filter(
             estudiante=estudiante,
             periodo=periodo
@@ -138,7 +135,8 @@ class MatriculaSerializer(serializers.ModelSerializer):
                     )
         else:
             matricula = Matricula.objects.create(**validated_data)
-            matricula.numero_matricula = f"M{matricula.id:06d}"
+            # Modificado aquí: Cambio del formato del número de matrícula
+            matricula.numero_matricula = f"M_IC{matricula.id:06d}"
             matricula.save()
 
             for materia_id in materias_ids:

@@ -66,13 +66,15 @@ function calculatePreviewAverage(row) {
     const promedio_p1 = parseFloat(row.querySelector('.promedio-p1').textContent) || 0;
     const promedio_p2 = parseFloat(row.querySelector('.promedio-p2').textContent) || 0;
     const examenTrimestral = parseFloat(row.querySelector('.examen-trimestral').value) || 0;
+    const proyectoTrimestral = parseFloat(row.querySelector('.proyecto-trimestral').value) || 0;
     
-    // Calcular usando los mismos porcentajes que el backend:
-    // 35% P1 + 35% P2 + 30% Examen trimestral
+    // Calcular usando los porcentajes actualizados:
+    // 30% P1 + 30% P2 + 20% Examen trimestral + 20% Proyecto trimestral
     const promedioFinal = (
-        (promedio_p1 * 0.35) + 
-        (promedio_p2 * 0.35) + 
-        (examenTrimestral * 0.30)
+        (promedio_p1 * 0.30) + 
+        (promedio_p2 * 0.30) + 
+        (examenTrimestral * 0.20) +
+        (proyectoTrimestral * 0.20)
     ).toFixed(2);
     
     // Actualizar la UI
@@ -126,12 +128,20 @@ function renderExamsTable(data) {
                 </div>
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm">
-                ${((promedio_p1 * 0.35 + promedio_p2 * 0.35) * (10/7)).toFixed(2)}
+                ${((promedio_p1 * 0.30 + promedio_p2 * 0.30) * (10/6)).toFixed(2)}
             </td>
             <td class="px-6 py-4 whitespace-nowrap">
                 <input type="number" 
                        class="w-20 rounded-md border-gray-300 examen-trimestral" 
                        value="${promedio.examen_trimestral || 0}" 
+                       min="0" 
+                       max="10" 
+                       step="0.01">
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+                <input type="number" 
+                       class="w-20 rounded-md border-gray-300 proyecto-trimestral" 
+                       value="${promedio.proyecto_trimestral || 0}" 
                        min="0" 
                        max="10" 
                        step="0.01">
@@ -155,7 +165,7 @@ async function saveExamenes() {
     loadingOverlay.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
     loadingOverlay.innerHTML = `
         <div class="bg-white p-4 rounded-md">
-            <p class="text-gray-800">Guardando exámenes trimestrales...</p>
+            <p class="text-gray-800">Guardando calificaciones trimestrales...</p>
         </div>
     `;
     document.body.appendChild(loadingOverlay);
@@ -165,7 +175,8 @@ async function saveExamenes() {
         rows.forEach(row => {
             examenes.push({
                 promedio_id: row.dataset.promedioId,
-                examen_trimestral: formatGrade(row.querySelector('.examen-trimestral').value)
+                examen_trimestral: formatGrade(row.querySelector('.examen-trimestral').value),
+                proyecto_trimestral: formatGrade(row.querySelector('.proyecto-trimestral').value)
             });
         });
 
@@ -182,7 +193,7 @@ async function saveExamenes() {
         const data = await response.json();
         
         if (response.ok) {
-            showNotification('Exámenes guardados exitosamente');
+            showNotification('Calificaciones guardadas exitosamente');
             
             // Update final averages with animation
             if (data.promedios) {
@@ -191,11 +202,9 @@ async function saveExamenes() {
                     if (row) {
                         const finalCell = row.querySelector('.promedio-final');
                         if (finalCell) {
-                            // Add highlight effect
                             finalCell.classList.add('bg-green-100');
                             finalCell.textContent = promedio.promedio_final.toFixed(2);
                             
-                            // Remove highlight after animation
                             setTimeout(() => {
                                 finalCell.classList.remove('bg-green-100');
                             }, 1000);
@@ -204,15 +213,14 @@ async function saveExamenes() {
                 });
             }
             
-            // Recargar los datos para asegurar sincronización
             await loadPromedios();
             
         } else {
-            throw new Error(data.error || 'Error al guardar los exámenes');
+            throw new Error(data.error || 'Error al guardar las calificaciones');
         }
     } catch (error) {
         console.error('Error:', error);
-        showNotification(error.message || 'Error al guardar los exámenes', 'error');
+        showNotification(error.message || 'Error al guardar las calificaciones', 'error');
     } finally {
         loadingOverlay.remove();
     }

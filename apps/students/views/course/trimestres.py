@@ -83,7 +83,15 @@ class ExamenTrimestralAPIView(APIView):
             
             for examen in examenes_data:
                 promedio = PromedioTrimestre.objects.get(id=examen['promedio_id'])
-                promedio.examen_trimestral = Decimal(str(examen['examen_trimestral']))
+                
+                # Actualizar examen trimestral
+                if 'examen_trimestral' in examen:
+                    promedio.examen_trimestral = Decimal(str(examen['examen_trimestral']))
+                
+                # Actualizar proyecto trimestral
+                if 'proyecto_trimestral' in examen:
+                    promedio.proyecto_trimestral = Decimal(str(examen['proyecto_trimestral']))
+                
                 promedio.save()
                 
                 # Actualizar promedio anual
@@ -104,11 +112,13 @@ class ExamenTrimestralAPIView(APIView):
                 
                 updated_promedios.append({
                     'id': promedio.id,
-                    'promedio_final': float(promedio.promedio_final)
+                    'promedio_final': float(promedio.promedio_final),
+                    'examen_trimestral': float(promedio.examen_trimestral),
+                    'proyecto_trimestral': float(promedio.proyecto_trimestral)
                 })
             
             return Response({
-                'message': 'Exámenes trimestrales actualizados exitosamente',
+                'message': 'Exámenes y proyectos trimestrales actualizados exitosamente',
                 'promedios': updated_promedios
             }, status=status.HTTP_200_OK)
             

@@ -81,9 +81,9 @@ class MatriculaAdmin(admin.ModelAdmin):
     list_display = ['numero_matricula', 'estudiante', 'periodo', 'fecha_inscripcion', 'get_materias_count']
     list_filter = ['periodo', 'fecha_inscripcion']
     search_fields = ['numero_matricula', 'estudiante__usuario__first_name', 'estudiante__usuario__last_name']
-    readonly_fields = ['numero_matricula', 'fecha_inscripcion']
+    readonly_fields = ['fecha_inscripcion']  # Eliminamos 'numero_matricula' para que sea editable
     inlines = [DetalleMatriculaInline]
-    
+
     def get_materias_count(self, obj):
         return obj.materias.count()
     get_materias_count.short_description = 'Número de Materias'

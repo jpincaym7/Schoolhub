@@ -117,48 +117,67 @@ class PromedioTrimestre(models.Model):
     promedio_p1 = models.DecimalField(max_digits=4, decimal_places=2, validators=[MinValueValidator(0), MaxValueValidator(10)], default=0)
     promedio_p2 = models.DecimalField(max_digits=4, decimal_places=2, validators=[MinValueValidator(0), MaxValueValidator(10)], default=0)
     examen_trimestral = models.DecimalField(max_digits=4, decimal_places=2, validators=[MinValueValidator(0), MaxValueValidator(10)], default=0)
+    proyecto_trimestral = models.DecimalField(max_digits=4, decimal_places=2, validators=[MinValueValidator(0), MaxValueValidator(10)], default=0)
     promedio_final = models.DecimalField(max_digits=4, decimal_places=2, validators=[MinValueValidator(0), MaxValueValidator(10)], default=0, editable=False)
 
     class Meta:
         unique_together = ['detalle_matricula', 'trimestre']
 
-    @classmethod
-    def actualizar_promedio(cls, detalle_matricula, trimestre):
-        # Constantes de peso para el promedio trimestral
-        PESO_PARCIAL = Decimal('0.35')       # 35% cada parcial
-        PESO_EXAMEN = Decimal('0.30')        # 30% examen trimestral
-        PRECISION = Decimal('0.01')          # Precisión de 2 decimales
+    def is_trimestre_completo(self):
+        """Verifica si todas las notas del trimestre están completas"""
+        return all([
+            self.promedio_p1 > 0,
+            self.promedio_p2 > 0,
+            self.examen_trimestral > 0,
+            self.proyecto_trimestral > 0
+        ])
 
-        promedio, created = cls.objects.get_or_create(
-            detalle_matricula=detalle_matricula,
-            trimestre=trimestre
-        )
+    def calcular_promedio_final(self):
+        """Calcula el promedio final del trimestre si todas las notas están completas"""
+        if self.is_trimestre_completo():
+            PESO_PARCIAL = Decimal('0.30')
+            PESO_EXAMEN = Decimal('0.20')
+            PESO_PROYECTO = Decimal('0.20')
+            PRECISION = Decimal('0.01')
 
-        # Obtener calificaciones del trimestre
-        calificaciones = Calificacion.objects.filter(
-            detalle_matricula=detalle_matricula,
-            parcial__trimestre=trimestre
-        )
-
-        # Calcular promedios por parcial
-        for calif in calificaciones:
-            if calif.parcial.numero == 1:
-                promedio.promedio_p1 = calif.promedio_final
-            elif calif.parcial.numero == 2:
-                promedio.promedio_p2 = calif.promedio_final
-
-        # Calcular promedio final (35% P1 + 35% P2 + 30% Examen trimestral)
-        if all([promedio.promedio_p1, promedio.promedio_p2, promedio.examen_trimestral]):
-            p1 = (Decimal(str(promedio.promedio_p1)) * PESO_PARCIAL).quantize(PRECISION, rounding=ROUND_DOWN)
-            p2 = (Decimal(str(promedio.promedio_p2)) * PESO_PARCIAL).quantize(PRECISION, rounding=ROUND_DOWN)
-            examen = (Decimal(str(promedio.examen_trimestral)) * PESO_EXAMEN).quantize(PRECISION, rounding=ROUND_DOWN)
+            p1 = (Decimal(str(self.promedio_p1)) * PESO_PARCIAL).quantize(PRECISION, rounding=ROUND_DOWN)
+            p2 = (Decimal(str(self.promedio_p2)) * PESO_PARCIAL).quantize(PRECISION, rounding=ROUND_DOWN)
+            examen = (Decimal(str(self.examen_trimestral)) * PESO_EXAMEN).quantize(PRECISION, rounding=ROUND_DOWN)
+            proyecto = (Decimal(str(self.proyecto_trimestral)) * PESO_PROYECTO).quantize(PRECISION, rounding=ROUND_DOWN)
             
-            promedio.promedio_final = (p1 + p2 + examen).quantize(PRECISION, rounding=ROUND_DOWN)
-        
-        promedio.save()
+            return (p1 + p2 + examen + proyecto).quantize(PRECISION, rounding=ROUND_DOWN)
+        return Decimal('0')
 
-    def __str__(self):
-        return f"Promedio Trimestral: {self.detalle_matricula.matricula.estudiante} - {self.trimestre}"
+    def save(self, *args, **kwargs):
+        # Calcular el promedio final si el trimestre está completo
+        self.promedio_final = self.calcular_promedio_final()
+        super().save(*args, **kwargs)
+        
+        # Actualizar el promedio anual
+        self.actualizar_promedio_anual()
+
+    def actualizar_promedio_anual(self):
+        """Actualiza el promedio anual considerando todos los trimestres"""
+        promedio_anual, _ = PromedioAnual.objects.get_or_create(
+            detalle_matricula=self.detalle_matricula
+        )
+
+        # Obtener todos los promedios trimestrales del estudiante en esta materia
+        promedios_trimestrales = PromedioTrimestre.objects.filter(
+            detalle_matricula=self.detalle_matricula
+        )
+
+        # Actualizar los promedios individuales de cada trimestre
+        for promedio in promedios_trimestrales:
+            if promedio.is_trimestre_completo():
+                if promedio.trimestre.trimestre == 1:
+                    promedio_anual.promedio_t1 = promedio.promedio_final
+                elif promedio.trimestre.trimestre == 2:
+                    promedio_anual.promedio_t2 = promedio.promedio_final
+                elif promedio.trimestre.trimestre == 3:
+                    promedio_anual.promedio_t3 = promedio.promedio_final
+
+        promedio_anual.save()
 
 class PromedioAnual(models.Model):
     detalle_matricula = models.OneToOneField('students.DetalleMatricula', on_delete=models.CASCADE)
@@ -168,12 +187,23 @@ class PromedioAnual(models.Model):
     promedio_final = models.DecimalField(max_digits=4, decimal_places=2, validators=[MinValueValidator(0), MaxValueValidator(10)], default=0, editable=False)
 
     def save(self, *args, **kwargs):
-        PRECISION = Decimal('0.01')  # Precisión de 2 decimales
-
-        if all([self.promedio_t1, self.promedio_t2, self.promedio_t3]):
-            # Calcular promedio final (promedio simple de los tres trimestres)
-            suma = sum(Decimal(str(x)) for x in [self.promedio_t1, self.promedio_t2, self.promedio_t3])
-            self.promedio_final = (suma / 3).quantize(PRECISION, rounding=ROUND_DOWN)
+        PRECISION = Decimal('0.01')
+        
+        # Calcular promedio final solo con trimestres completos
+        trimestres_completos = []
+        
+        if self.promedio_t1 > 0:
+            trimestres_completos.append(self.promedio_t1)
+        if self.promedio_t2 > 0:
+            trimestres_completos.append(self.promedio_t2)
+        if self.promedio_t3 > 0:
+            trimestres_completos.append(self.promedio_t3)
+        
+        if trimestres_completos:
+            suma = sum(Decimal(str(x)) for x in trimestres_completos)
+            self.promedio_final = (suma / len(trimestres_completos)).quantize(PRECISION, rounding=ROUND_DOWN)
+        else:
+            self.promedio_final = Decimal('0')
         
         super().save(*args, **kwargs)
 

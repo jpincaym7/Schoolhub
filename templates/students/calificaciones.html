@@ -1,0 +1,227 @@
+{% extends 'components/base.html' %}
+{% load static %}
+
+{% block title %}Calificaciones Finales - SchoolHub{% endblock %}
+
+{% block content %}
+<div id="gradesContainer">
+    <!-- Header Section -->
+    <div class="mb-6">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800">Calificaciones Finales</h1>
+                <p class="text-gray-600">Resumen de tu rendimiento académico</p>
+            </div>
+            <!-- Period Selector -->
+            <div class="mt-4 md:mt-0">
+                <select id="periodSelector" 
+                        class="w-full md:w-auto px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-200 focus:border-primary-300 shadow-sm">
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div id="statsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <!-- Promedio General -->
+        <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-4 text-white shadow-lg hover:shadow-xl transition-shadow">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm opacity-80">Promedio General</p>
+                    <p id="promedioGeneral" class="text-3xl font-bold"></p>
+                </div>
+                <div class="bg-white/20 p-3 rounded-lg">
+                    <i class="fas fa-chart-line text-2xl"></i>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Materias Aprobadas -->
+        <div class="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl p-4 text-white shadow-lg hover:shadow-xl transition-shadow">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm opacity-80">Materias Aprobadas</p>
+                    <p id="materiasAprobadas" class="text-3xl font-bold"></p>
+                </div>
+                <div class="bg-white/20 p-3 rounded-lg">
+                    <i class="fas fa-check-circle text-2xl"></i>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Materias Pendientes -->
+        <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-4 text-white shadow-lg hover:shadow-xl transition-shadow">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm opacity-80">Materias Pendientes</p>
+                    <p id="materiasPendientes" class="text-3xl font-bold"></p>
+                </div>
+                <div class="bg-white/20 p-3 rounded-lg">
+                    <i class="fas fa-clock text-2xl"></i>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Materias Reprobadas -->
+        <div class="bg-gradient-to-br from-rose-500 to-rose-600 rounded-xl p-4 text-white shadow-lg hover:shadow-xl transition-shadow">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm opacity-80">Materias Reprobadas</p>
+                    <p id="materiasReprobadas" class="text-3xl font-bold"></p>
+                </div>
+                <div class="bg-white/20 p-3 rounded-lg">
+                    <i class="fas fa-times-circle text-2xl"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Grades Table -->
+    <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+        <div class="p-4 border-b border-gray-200 bg-gray-50">
+            <div class="flex items-center justify-between">
+                <h2 class="text-lg font-semibold text-gray-800">Detalle de Calificaciones</h2>
+                <button id="toggleStats" class="text-gray-600 hover:text-gray-800 transition">
+                    <i id="toggleIcon" class="fas fa-chevron-up"></i>
+                </button>
+            </div>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead>
+                    <tr class="bg-gray-50">
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Materia</th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">1er Trimestre</th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">2do Trimestre</th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">3er Trimestre</th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Promedio Final</th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                    </tr>
+                </thead>
+                <tbody id="gradesTableBody" class="bg-white divide-y divide-gray-200">
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Initialize data from Django context
+    const grades = {{ final_grades_json|safe }};
+    console.log(grades)
+    const periods = {{ periods_json|safe }};
+    const currentPeriodId = {{ current_period_id }};
+    const stats = {{ estadisticas|safe }};
+
+    // DOM Elements
+    const statsContainer = document.getElementById('statsContainer');
+    const toggleStats = document.getElementById('toggleStats');
+    const toggleIcon = document.getElementById('toggleIcon');
+    const periodSelector = document.getElementById('periodSelector');
+    const gradesTableBody = document.getElementById('gradesTableBody');
+
+    function updateStats() {
+        document.getElementById('promedioGeneral').textContent = stats.promedio_general;
+        document.getElementById('materiasAprobadas').textContent = `${stats.materias_aprobadas}/${stats.total_materias}`;
+        document.getElementById('materiasPendientes').textContent = stats.materias_pendientes;
+        document.getElementById('materiasReprobadas').textContent = stats.materias_reprobadas;
+    }
+
+
+    // Toggle stats visibility
+    function toggleStatsVisibility() {
+        const isVisible = !statsContainer.classList.contains('hidden');
+        statsContainer.classList.toggle('hidden');
+        toggleIcon.className = isVisible ? 'fas fa-chevron-down' : 'fas fa-chevron-up';
+    }
+
+    // Render grades table
+    function renderGradesTable() {
+        gradesTableBody.innerHTML = grades.map(subject => {
+            // Asegurar que los promedios existan y tengan un valor por defecto de 0
+            const t1 = subject.promedios.t1 || { promedio: 0, completo: false };
+            const t2 = subject.promedios.t2 || { promedio: 0, completo: false };
+            const t3 = subject.promedios.t3 || { promedio: 0, completo: false };
+    
+            return `
+                <tr class="hover:bg-gray-50 transition-colors">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        ${subject.materia}
+                    </td>
+                    
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-center">
+                        <span class="font-medium ${!t1.completo ? 'text-gray-400' : ''}">
+                            ${t1.promedio.toFixed(2)}
+                        </span>
+                    </td>
+                    
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-center">
+                        <span class="font-medium ${!t2.completo ? 'text-gray-400' : ''}">
+                            ${t2.promedio.toFixed(2)}
+                        </span>
+                    </td>
+                    
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-center">
+                        <span class="font-medium ${!t3.completo ? 'text-gray-400' : ''}">
+                            ${t3.promedio.toFixed(2)}
+                        </span>
+                    </td>
+                    
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-center">
+                        <span class="font-bold ${getGradeColor(subject.promedio_final)}">
+                            ${subject.promedio_final.toFixed(2)}
+                        </span>
+                    </td>
+                    
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-center">
+                        <span class="px-3 py-1 rounded-full text-xs font-medium ${getStatusClass(subject.estado)}">
+                            ${subject.estado}
+                        </span>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+    
+    // Helper function to get grade color
+    function getGradeColor(grade) {
+        if (grade >= 7) return 'text-emerald-600';
+        if (grade > 0) return 'text-amber-600';
+        return 'text-gray-400';  // Para notas en 0
+    }
+    
+    function getStatusClass(status) {
+        const statusClasses = {
+            'Aprobado': 'bg-emerald-100 text-emerald-800',
+            'En Progreso': 'bg-blue-100 text-blue-800',
+            'Pendiente': 'bg-purple-100 text-purple-800',
+            'Reprobado': 'bg-rose-100 text-rose-800'
+        };
+        return statusClasses[status] || 'bg-gray-100 text-gray-800';
+    }
+
+
+    // Initialize period selector
+    function initializePeriodSelector() {
+        periodSelector.innerHTML = periods.map(period => 
+            `<option value="${period.id}" ${period.id === currentPeriodId ? 'selected' : ''}>
+                ${period.nombre}
+            </option>`
+        ).join('');
+    }
+
+    // Event Listeners
+    document.addEventListener('DOMContentLoaded', () => {
+        updateStats();
+        renderGradesTable();
+        initializePeriodSelector();
+        
+        toggleStats.addEventListener('click', toggleStatsVisibility);
+        
+        periodSelector.addEventListener('change', (e) => {
+            window.location.href = `?period=${e.target.value}`;
+        });
+    });
+</script>
+{% endblock %}
