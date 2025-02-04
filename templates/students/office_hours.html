@@ -21,17 +21,11 @@
         overflow: hidden;
     }
 
-    .calendar-sidebar {
-        width: 280px;
-        background-color: var(--background-color);
-        border-right: 1px solid #dadce0;
-        padding: 20px;
-    }
-
     .calendar-main {
         flex-grow: 1;
         display: flex;
         flex-direction: column;
+        border-left: 1px solid #dadce0;
     }
 
     .calendar-header {
@@ -39,35 +33,59 @@
         grid-template-columns: repeat(7, 1fr);
         background-color: var(--primary-color);
         color: white;
-        padding: 10px;
         text-align: center;
         font-weight: 600;
+        border-bottom: 2px solid #3b78db;
+    }
+
+    .calendar-header > div {
+        padding: 12px;
+        border-right: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .calendar-header > div:last-child {
+        border-right: none;
     }
 
     .calendar-grid {
         display: grid;
         grid-template-columns: repeat(7, 1fr);
-        gap: 2px;
         flex-grow: 1;
+        background-color: #ffffff;
+        border-top: 1px solid #dadce0;
+    }
+
+    .day-column {
+        border-right: 1px solid #dadce0;
+        min-height: 200px;
+        background-color: #ffffff;
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+    }
+
+    .day-column:last-child {
+        border-right: none;
     }
 
     .calendar-slot {
         position: relative;
         display: flex;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
         text-align: center;
         padding: 10px;
         cursor: pointer;
         transition: all 0.3s ease;
-        border: 1px solid #e0e0e0;
+        border-bottom: 1px solid #e0e0e0;
         font-size: 0.9rem;
+        min-height: 80px;
     }
 
     .slot-available {
         background-color: #e6f3ff;
         color: var(--primary-color);
-        border-color: var(--primary-color);
     }
 
     .slot-available:hover {
@@ -77,11 +95,33 @@
         box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     }
 
-    .slot-unavailable {
-        background-color: #f1f3f4;
-        color: #70757a;
-        cursor: not-allowed;
-        opacity: 0.6;
+    .slot-multiple {
+        background-color: #e8f5e9;
+    }
+
+    .empty-calendar-message {
+        grid-column: span 7;
+        text-align: center;
+        padding: 40px;
+        color: #666;
+        font-style: italic;
+        border-top: 1px solid #dadce0;
+    }
+
+    .professor-indicator {
+        font-size: 0.75rem;
+        margin-top: 4px;
+        padding: 2px 4px;
+        border-radius: 4px;
+        background-color: rgba(66, 133, 244, 0.1);
+        color: var(--primary-color);
+    }
+
+    .professor-list {
+        max-height: 60px;
+        overflow-y: auto;
+        width: 100%;
+        scrollbar-width: thin;
     }
 
     .professor-filter {
@@ -101,20 +141,28 @@
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
 
-    .no-hours-message {
-        text-align: center;
-        padding: 20px;
-        color: #666;
-        font-size: 0.95rem;
-        line-height: 1.5;
-    }
-
     .empty-calendar-message {
         grid-column: span 7;
         text-align: center;
         padding: 40px;
         color: #666;
         font-style: italic;
+    }
+
+    /* Tooltip para mostrar profesores adicionales */
+    .slot-tooltip {
+        position: absolute;
+        background-color: white;
+        border: 1px solid #dadce0;
+        border-radius: 4px;
+        padding: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        z-index: 20;
+        display: none;
+    }
+
+    .calendar-slot:hover .slot-tooltip {
+        display: block;
     }
 </style>
 {% endblock %}
@@ -139,7 +187,19 @@
                     <div>
                         <h3 class="text-xl font-bold mb-4 text-primary-600">Detalles de Horario</h3>
                         <div class="space-y-3">
-                            <p><strong>Profesor:</strong> <span x-text="selectedSlot.profesor"></span></p>
+                            <template x-if="Array.isArray(selectedSlot.profesores)">
+                                <div>
+                                    <strong>Profesores disponibles:</strong>
+                                    <ul class="mt-2">
+                                        <template x-for="prof in selectedSlot.profesores" :key="prof.id">
+                                            <li x-text="prof.nombre"></li>
+                                        </template>
+                                    </ul>
+                                </div>
+                            </template>
+                            <template x-if="!Array.isArray(selectedSlot.profesores)">
+                                <p><strong>Profesor:</strong> <span x-text="selectedSlot.profesor"></span></p>
+                            </template>
                             <p><strong>Día:</strong> <span x-text="selectedSlot.day"></span></p>
                             <p><strong>Hora:</strong> <span x-text="selectedSlot.time"></span></p>
                             <p><strong>Especialidad:</strong> <span x-text="selectedSlot.especialidad"></span></p>
@@ -167,20 +227,42 @@
             </div>
 
             <div class="calendar-grid">
-                <template x-if="weekSlots.length > 0">
-                    <template x-for="(slot, index) in weekSlots" :key="index">
-                        <div 
-                            :class="[
-                                'calendar-slot',
-                                slot.available ? 'slot-available' : 'slot-unavailable'
-                            ]"
-                            @click="slot.available && showSlotDetails(slot)"
-                        >
-                            <span x-text="slot.time"></span>
+                <template x-if="organizedSlots">
+                    <template x-for="(daySlots, dayIndex) in organizedSlots" :key="dayIndex">
+                        <div class="day-column">
+                            <template x-for="(slot, slotIndex) in daySlots" :key="slotIndex">
+                                <div 
+                                    :class="[
+                                        'calendar-slot',
+                                        slot.available ? 'slot-available' : 'slot-unavailable',
+                                        slot.profesores && slot.profesores.length > 1 ? 'slot-multiple' : ''
+                                    ]"
+                                    @click="slot.available && showSlotDetails(slot)"
+                                >
+                                    <span x-text="slot.time"></span>
+                                    <div class="professor-list">
+                                        <template x-if="slot.profesores && slot.profesores.length > 0">
+                                            <template x-for="(prof, idx) in slot.profesores.slice(0, 2)" :key="idx">
+                                                <div class="professor-indicator" x-text="prof.nombre"></div>
+                                            </template>
+                                        </template>
+                                        <template x-if="slot.profesores && slot.profesores.length > 2">
+                                            <div class="professor-indicator" x-text="`+${slot.profesores.length - 2} más`"></div>
+                                        </template>
+                                    </div>
+                                    <template x-if="slot.profesores && slot.profesores.length > 2">
+                                        <div class="slot-tooltip">
+                                            <template x-for="prof in slot.profesores.slice(2)" :key="prof.id">
+                                                <div x-text="prof.nombre"></div>
+                                            </template>
+                                        </div>
+                                    </template>
+                                </div>
+                            </template>
                         </div>
                     </template>
                 </template>
-                <template x-if="weekSlots.length === 0 && !loading">
+                <template x-if="!organizedSlots && !loading">
                     <div class="empty-calendar-message">
                         <template x-if="selectedProfesor">
                             El profesor seleccionado no tiene horarios de atención disponibles
@@ -202,30 +284,88 @@
         return {
             selectedProfesor: '',
             selectedSlot: null,
-            weekSlots: [],
+            organizedSlots: null,
             loading: false,
+            
+            // Mapeo de días a índices
+            dayMapping: {
+                'Lunes': 0,
+                'Martes': 1,
+                'Miércoles': 2,
+                'Jueves': 3,
+                'Viernes': 4,
+                'Sábado': 5,
+                'Domingo': 6
+            },
     
-            // Initialization
             init() {
-                // Fetch office hours immediately when component loads
                 this.fetchOfficeHours();
             },
     
             async fetchOfficeHours() {
                 this.loading = true;
                 this.selectedSlot = null;
-                this.weekSlots = [];
+                this.organizedSlots = Array(7).fill().map(() => []);
     
                 try {
                     const response = await fetch(`/subjects/consult-office/?profesor=${this.selectedProfesor}`);
                     const data = await response.json();
-                    this.weekSlots = data.slots || [];
+                    
+                    // Primero agrupamos por día y hora
+                    const slotMap = new Map();
+                    
+                    data.slots.forEach(slot => {
+                        const key = `${slot.day}-${slot.time}`;
+                        if (!slotMap.has(key)) {
+                            slotMap.set(key, {
+                                ...slot,
+                                profesores: [{
+                                    id: slot.profesor_id,
+                                    nombre: slot.profesor,
+                                    especialidad: slot.especialidad
+                                }]
+                            });
+                        } else {
+                            const existingSlot = slotMap.get(key);
+                            existingSlot.profesores.push({
+                                id: slot.profesor_id,
+                                nombre: slot.profesor,
+                                especialidad: slot.especialidad
+                            });
+                        }
+                    });
+                    
+                    // Ahora organizamos los slots por día
+                    const tempOrganizedSlots = Array(7).fill().map(() => []);
+                    
+                    for (const slot of slotMap.values()) {
+                        const dayIndex = this.dayMapping[slot.day];
+                        if (dayIndex !== undefined) {
+                            tempOrganizedSlots[dayIndex].push(slot);
+                        }
+                    }
+                    
+                    // Ordenar los slots por hora dentro de cada día
+                    tempOrganizedSlots.forEach(daySlots => {
+                        daySlots.sort((a, b) => {
+                            const timeA = this.convertToMinutes(a.time);
+                            const timeB = this.convertToMinutes(b.time);
+                            return timeA - timeB;
+                        });
+                    });
+                    
+                    this.organizedSlots = tempOrganizedSlots;
                 } catch (error) {
                     console.error('Error fetching office hours:', error);
                     showToast('Error al cargar los horarios', 'error');
                 } finally {
                     this.loading = false;
                 }
+            },
+            
+            convertToMinutes(timeString) {
+                const [hours, minutes] = timeString.split(':').map(Number);
+                return hours * 60 + minutes;
             },
     
             showSlotDetails(slot) {

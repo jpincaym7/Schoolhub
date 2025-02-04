@@ -17,8 +17,9 @@ from django.contrib.messages.views import SuccessMessageMixin
 from django.urls import reverse_lazy
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect
-from django.db.models import Q
-
+from django.db.models import Value
+from django.db.models import Q, CharField
+from django.db.models.functions import Concat
 from apps.users.models import Module
 
 class AsignacionProfesorListView(ListView):
@@ -32,68 +33,76 @@ class AsignacionProfesorListView(ListView):
         return super().get(request, *args, **kwargs)
 
     def get_queryset(self):
+        # Consulta base con todas las relaciones necesarias
         queryset = AsignacionProfesor.objects.select_related(
-            'profesor', 'materia', 'curso', 'periodo'
-        ).order_by('profesor__usuario__first_name')  # Cambiado para incluir el nombre del usuario
+            'profesor', 
+            'profesor__usuario',
+            'materia', 
+            'curso', 
+            'periodo'
+        ).order_by('profesor__usuario__first_name')
 
-        # Búsqueda
-        search = self.request.GET.get('search', '')
+        # Obtener y procesar término de búsqueda
+        search = self.request.GET.get('search', '').strip()
         if search:
-            queryset = queryset.filter(
-                Q(profesor__usuario__first_name__icontains=search) |
-                Q(profesor__usuario__last_name__icontains=search) |
-                Q(materia__nombre__icontains=search) |
-                Q(curso__nombre__icontains=search)
-            )
+            # Dividir el término de búsqueda en palabras para búsqueda más precisa
+            search_terms = search.split()
+            
+            # Crear consultas Q para cada término
+            query = Q()
+            for term in search_terms:
+                term_query = (
+                    Q(profesor__usuario__first_name__icontains=term) |
+                    Q(profesor__usuario__last_name__icontains=term) |
+                    Q(materia__nombre__icontains=term) |
+                    Q(curso__nombre__icontains=term) |
+                    Q(periodo__nombre__icontains=term)
+                )
+                query &= term_query  # Usar AND para múltiples términos
+            
+            queryset = queryset.filter(query).distinct()
+
         return queryset
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['can_create'] = self.request.user.has_module_permission(
-            get_object_or_404(Module, code='ASIG_PROF'), 'create'
-        )
-        context['can_edit'] = self.request.user.has_module_permission(
-            get_object_or_404(Module, code='ASIG_PROF'), 'edit'
-        )
-        context['can_delete'] = self.request.user.has_module_permission(
-            get_object_or_404(Module, code='ASIG_PROF'), 'delete'
-        )
-        profesores_data = [
-            {
-                'id': profesor.id,
-                'nombre': f"{profesor.usuario.first_name} {profesor.usuario.last_name}".strip()
-            }
-            for profesor in Profesor.objects.all()
-        ]
         
-        materias_data = [
-            {
-                'id': materia.id,
-                'nombre': materia.nombre
-            }
-            for materia in Materia.objects.all()
-        ]
+        # Verificar permisos
+        module = get_object_or_404(Module, code='ASIG_PROF')
+        context.update({
+            'can_create': self.request.user.has_module_permission(module, 'create'),
+            'can_edit': self.request.user.has_module_permission(module, 'edit'),
+            'can_delete': self.request.user.has_module_permission(module, 'delete'),
+        })
+
+        # Optimizar consultas para los datos JSON
+        profesores_data = list(Profesor.objects.select_related('usuario').annotate(
+            nombre_completo=Concat(
+                'usuario__first_name', 
+                Value(' '), 
+                'usuario__last_name',
+                output_field=CharField()
+            )
+        ).values('id', 'nombre_completo'))
+
+        # Convertir anotación a formato requerido
+        for profesor in profesores_data:
+            profesor['nombre'] = profesor.pop('nombre_completo').strip()
         
-        cursos_data = [
-            {
-                'id': curso.id,
-                'nombre': curso.nombre
-            }
-            for curso in Curso.objects.all()
-        ]
-        
-        periodos_data = [
-            {
-                'id': periodo.id,
-                'nombre': periodo.nombre
-            }
-            for periodo in PeriodoAcademico.objects.all()
-        ]
-        context['profesores_json'] = json.dumps(profesores_data)
-        context['materias_json'] = json.dumps(materias_data)
-        context['cursos_json'] = json.dumps(cursos_data)
-        context['periodos_json'] = json.dumps(periodos_data)
-        context['search'] = self.request.GET.get('search', '')
+        # Obtener datos para los demás modelos
+        materias_data = list(Materia.objects.values('id', 'nombre'))
+        cursos_data = list(Curso.objects.values('id', 'nombre'))
+        periodos_data = list(PeriodoAcademico.objects.values('id', 'nombre'))
+
+        # Agregar datos JSON al contexto
+        context.update({
+            'profesores_json': json.dumps(profesores_data),
+            'materias_json': json.dumps(materias_data),
+            'cursos_json': json.dumps(cursos_data),
+            'periodos_json': json.dumps(periodos_data),
+            'search': self.request.GET.get('search', ''),
+        })
+
         return context
 
 class AsignacionProfesorViewSet(viewsets.ModelViewSet):

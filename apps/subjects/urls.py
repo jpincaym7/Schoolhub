@@ -25,7 +25,7 @@ urlpatterns = [
     path('', include(router.urls)),
     path('subject-list/', materia_list, name='subject_list'),
     path('cursos-list/', CursoManagementView.as_view(), name='cursos-list'),
-    path('asignaciones/', AsignacionProfesorListView.as_view(), name='cursos-list'),
+    path('asignaciones/', AsignacionProfesorListView.as_view(), name='list-asignaciones'),
     path('dashboard-horarios/', HorariosAtencionView.as_view(), name='api-horarios'),
     path('profesor/dashboard/', TeacherDashboardView.as_view(), name='teacher_dashboard'),
     path('estudiante/<int:estudiante_id>/periodo/<int:periodo_id>/calificaciones/',

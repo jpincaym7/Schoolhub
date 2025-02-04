@@ -101,7 +101,21 @@ class EnrollmentManager {
         const studentSelect = this.form.querySelector('[name="estudiante"]');
         const periodSelect = this.form.querySelector('[name="periodo"]');
         
-        isValid = this.validateField(studentSelect, 'Debe seleccionar un estudiante') && isValid;
+        // Solo validar estudiante si no estamos en modo edición
+        if (this.form.dataset.mode !== 'edit') {
+            const selectedStudentId = studentSelect.value;
+            const selectedOption = studentSelect.querySelector(`option[value="${selectedStudentId}"]`);
+            
+            if (!selectedStudentId) {
+                this.validateField(studentSelect, 'Debe seleccionar un estudiante');
+                isValid = false;
+            } else if (selectedOption.textContent.includes('(Matriculado)')) {
+                this.validateField(studentSelect, 'Este estudiante ya está matriculado');
+                isValid = false;
+            }
+        }
+
+        // Validar periodo
         isValid = this.validateField(periodSelect, 'Debe seleccionar un periodo') && isValid;
 
         // Validate subject selection
@@ -180,14 +194,71 @@ class EnrollmentManager {
     }
 
     async loadStudents() {
-        const students = await this.fetchData('students');
-        const select = document.getElementById('studentSelect');
-        select.innerHTML = '<option value="">Seleccione un estudiante</option>' +
-            students.map(student => 
-                `<option value="${student.id}">${student.usuario}</option>`
-            ).join('');
+        try {
+            const students = await this.fetchData('students');
+            const select = document.getElementById('studentSelect');
+            const isEditMode = this.form.dataset.mode === 'edit';
+            const currentStudentId = isEditMode ? parseInt(this.form.dataset.studentId) : null;
+    
+            console.log('Modo edición:', isEditMode);
+            console.log('ID estudiante actual:', currentStudentId);
+            console.log('Estudiantes cargados:', students);
+    
+            // Crear las opciones del select
+            let options = '<option value="">Seleccione un estudiante</option>';
+            
+            students.forEach(student => {
+                // Solo mostrar estudiantes que no están matriculados (is_enrolled: false)
+                // O el estudiante actual en modo edición
+                if (!student.is_enrolled || (isEditMode && student.id === currentStudentId)) {
+                    // Formatear el nombre del estudiante incluyendo el curso si existe
+                    const studentDisplay = student.curso 
+                        ? `${student.usuario} - ${student.curso}`
+                        : student.usuario;
+                        
+                    const isSelected = currentStudentId === student.id;
+                    
+                    options += `
+                        <option 
+                            value="${student.id}" 
+                            ${isSelected ? 'selected' : ''}>
+                            ${studentDisplay}
+                            ${student.is_enrolled ? ' (Matriculado)' : ''}
+                        </option>
+                    `;
+                }
+            });
+    
+            select.innerHTML = options;
+    
+            // Verificar la selección después de actualizar las opciones
+            if (currentStudentId) {
+                select.value = currentStudentId;
+                console.log('Valor seleccionado:', select.value);
+            }
+    
+            // Actualizar contador solo con estudiantes no matriculados
+            const availableStudents = students.filter(student => !student.is_enrolled).length;
+            document.getElementById('totalStudents').textContent = availableStudents;
+    
+        } catch (error) {
+            console.error('Error al cargar estudiantes:', error);
+            this.showToast('Error al cargar la lista de estudiantes', 'error');
+        }
+    }
+    
+    async fetchExistingEnrollments(periodId) {
+        if (!periodId) return [];
         
-        document.getElementById('totalStudents').textContent = students.length;
+        try {
+            const response = await fetch(`${this.endpoints.enrollments}?periodo=${periodId}`);
+            const data = await response.json();
+            console.log('Matrículas existentes:', data.results);
+            return data.results || [];
+        } catch (error) {
+            console.error('Error fetching existing enrollments:', error);
+            return [];
+        }
     }
 
     async loadPeriods() {
@@ -272,54 +343,63 @@ class EnrollmentManager {
                     </svg>
                     <span class="ml-2">Cargando materias...</span>
                 </div>`;
-
+    
             // Fetch enrollment details
             const response = await fetch(`${this.endpoints.enrollments}${enrollmentId}/`);
             if (!response.ok) throw new Error('Error al cargar la matrícula');
             const enrollment = await response.json();
-
-            console.log('Enrollment data:', enrollment); // Para debugging
-
+    
+            console.log('Datos de matrícula recibidos:', enrollment);
+    
             // Actualizar título del modal
             document.querySelector('#enrollmentModal h2').textContent = 'Editar Matrícula';
-
-            // Marcar el formulario como modo edición
+    
+            // Establecer el modo de edición y guardar el ID del estudiante
             this.form.dataset.mode = 'edit';
             this.form.dataset.enrollmentId = enrollmentId;
-
-            // Establecer estudiante y periodo
+            this.form.dataset.studentId = enrollment.estudiante;
+    
+            console.log('ID del estudiante guardado:', this.form.dataset.studentId);
+    
+            // Primero cargar los datos del estudiante
+            await this.loadStudents();
+            
+            // Luego cargar los períodos
+            await this.loadPeriods();
+    
             const studentSelect = this.form.querySelector('[name="estudiante"]');
             const periodSelect = this.form.querySelector('[name="periodo"]');
-
-            // Cargar estudiantes y periodos si es necesario
-            await Promise.all([
-                this.loadStudents(),
-                this.loadPeriods()
-            ]);
-
+    
+            console.log('Configurando selects:', {
+                estudianteId: enrollment.estudiante,
+                periodoId: enrollment.periodo,
+                selectEstudiante: studentSelect.value,
+                opcionesDisponibles: Array.from(studentSelect.options).map(opt => ({
+                    value: opt.value,
+                    text: opt.text
+                }))
+            });
+    
             // Establecer los valores seleccionados
             studentSelect.value = enrollment.estudiante;
             periodSelect.value = enrollment.periodo;
-
+    
             // Cargar y marcar las materias
             await this.loadSubjects();
             
-            // Esperar un momento para asegurarse de que las materias se han cargado
             setTimeout(() => {
                 const subjectsCheckboxes = this.form.querySelectorAll('input[name="subjects"]');
                 const enrolledMateriaIds = enrollment.detalles.map(d => d.materia);
                 
-                console.log('Materias matriculadas:', enrolledMateriaIds); // Para debugging
-
                 subjectsCheckboxes.forEach(checkbox => {
                     checkbox.checked = enrolledMateriaIds.includes(parseInt(checkbox.value));
                 });
             }, 300);
-
+    
             // Deshabilitar campos que no deberían cambiar en edición
             studentSelect.disabled = true;
             periodSelect.disabled = true;
-
+    
         } catch (error) {
             console.error('Error en editEnrollment:', error);
             this.showToast('Error al cargar la matrícula: ' + error.message, 'error');
@@ -431,9 +511,15 @@ class EnrollmentManager {
             };
     
             if (!isEditMode) {
-                // Solo incluir estudiante y periodo en modo creación
+                // Only include student and period in creation mode
                 jsonData.estudiante = parseInt(this.form.querySelector('[name="estudiante"]').value);
                 jsonData.periodo = parseInt(this.form.querySelector('[name="periodo"]').value);
+            }
+    
+            // Add validation to prevent submitting without subjects
+            if (jsonData.materias_ids.length === 0) {
+                this.showToast('Debe seleccionar al menos una materia', 'error');
+                return;
             }
     
             const url = isEditMode 
@@ -452,7 +538,16 @@ class EnrollmentManager {
     
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(JSON.stringify(errorData));
+                
+                // More specific error handling
+                if (errorData.estudiante) {
+                    this.showToast(`Error: ${errorData.estudiante.join(', ')}`, 'error');
+                } else if (errorData.non_field_errors) {
+                    this.showToast(`Error: ${errorData.non_field_errors.join(', ')}`, 'error');
+                } else {
+                    this.showToast('Error al procesar la matrícula', 'error');
+                }
+                return;
             }
     
             this.showToast(
@@ -465,16 +560,7 @@ class EnrollmentManager {
     
         } catch (error) {
             console.error('Error:', error);
-            let errorMessage = 'Error al procesar la matrícula';
-            try {
-                const errorData = JSON.parse(error.message);
-                if (errorData.estudiante) {
-                    errorMessage = `Error: ${errorData.estudiante.join(', ')}`;
-                }
-            } catch (e) {
-                // Usar mensaje genérico si falla el parsing
-            }
-            this.showToast(errorMessage, 'error');
+            this.showToast('Error al procesar la matrícula', 'error');
         } finally {
             this.submitButton.disabled = false;
             this.submitSpinner.classList.add('hidden');

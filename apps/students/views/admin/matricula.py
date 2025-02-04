@@ -9,6 +9,7 @@ from apps.students.models import Estudiante, Matricula, DetalleMatricula
 from django.views.generic import TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from apps.users.decorators import module_permission_required
+from apps.subjects.models.activity import Calificacion, PromedioAnual, PromedioTrimestre
 from django.utils.decorators import method_decorator
 
 class MatriculaTemplateView(LoginRequiredMixin, TemplateView):
@@ -53,21 +54,36 @@ class MatriculaViewSet(viewsets.ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         try:
-            instance = self.get_object()
-            # Check if deletion is allowed (you might want to add custom logic here)
-            if instance.detallematricula_set.exists():  # Optional: Prevent deletion if has grades
-                instance.delete()
+            with transaction.atomic():
+                instance = self.get_object()
+                detalles = instance.detallematricula_set.all()
+                
+                # Delete all related grades and averages
+                for detalle in detalles:
+                    # Delete individual grades (Calificacion)
+                    Calificacion.objects.filter(detalle_matricula=detalle).delete()
+                    
+                    # Delete trimester averages (PromedioTrimestre)
+                    PromedioTrimestre.objects.filter(detalle_matricula=detalle).delete()
+                    
+                    # Delete yearly average (PromedioAnual)
+                    PromedioAnual.objects.filter(detalle_matricula=detalle).delete()
+                
+                # Finally, delete the enrollment and its details
+                instance.delete()  # This will also delete DetalleMatricula due to CASCADE
+                
                 return Response(
-                    {'message': 'Matrícula eliminada exitosamente'},
+                    {
+                        'message': 'Matrícula y calificaciones relacionadas eliminadas exitosamente'
+                    },
                     status=status.HTTP_200_OK
                 )
-            return Response(
-                {'error': 'No se puede eliminar una matrícula con calificaciones'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+                
         except Exception as e:
             return Response(
-                {'error': str(e)},
+                {
+                    'error': f'Error al eliminar la matrícula: {str(e)}'
+                },
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -81,18 +97,37 @@ class MatriculaViewSet(viewsets.ModelViewSet):
 
         try:
             with transaction.atomic():
-                # Remove all existing subjects
-                matricula.detallematricula_set.all().delete()
+                # Get current subjects
+                detalles_actuales = matricula.detallematricula_set.all()
+                materias_actuales = set(detalles_actuales.values_list('materia_id', flat=True))
+                materias_nuevas = set(materias_ids)
+                
+                # Find subjects that will be removed
+                materias_removidas = materias_actuales - materias_nuevas
+                
+                # Delete grades for removed subjects
+                for detalle in detalles_actuales.filter(materia_id__in=materias_removidas):
+                    # Delete individual grades
+                    Calificacion.objects.filter(detalle_matricula=detalle).delete()
+                    
+                    # Delete trimester averages
+                    PromedioTrimestre.objects.filter(detalle_matricula=detalle).delete()
+                    
+                    # Delete yearly average
+                    PromedioAnual.objects.filter(detalle_matricula=detalle).delete()
+                
+                # Remove all existing subjects that are not in the new list
+                matricula.detallematricula_set.filter(materia_id__in=materias_removidas).delete()
                 
                 # Add new subjects
-                for materia_id in materias_ids:
+                for materia_id in materias_nuevas - materias_actuales:
                     DetalleMatricula.objects.create(
                         matricula=matricula,
                         materia_id=materia_id
                     )
 
             return Response(
-                {'message': 'Materias actualizadas exitosamente'},
+                {'message': 'Materias y calificaciones actualizadas exitosamente'},
                 status=status.HTTP_200_OK
             )
         except Exception as e:

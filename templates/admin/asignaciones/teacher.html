@@ -52,7 +52,7 @@
                 </button>
                 {% if search %}
                 <a 
-                    href="{% url 'asignacion_list' %}" 
+                    href="{% url 'subjects:list-asignaciones' %}" 
                     class="bg-gray-50 hover:bg-gray-100 text-gray-700 px-5 py-2.5 rounded-lg shadow-sm transition-all duration-200 font-medium">
                     Limpiar
                 </a>
@@ -624,6 +624,123 @@
 
         // Initialize all event listeners
         initializeEventListeners();
+    });
+    document.addEventListener('DOMContentLoaded', function() {
+        // Search functionality
+        const initializeSearch = () => {
+            const searchForm = document.querySelector('form[method="GET"]');
+            const searchInput = document.querySelector('#search');
+            let searchTimeout = null;
+    
+            if (!searchForm || !searchInput) return;
+    
+            // Initialize search input with URL params if any
+            const urlParams = new URLSearchParams(window.location.search);
+            const searchQuery = urlParams.get('search');
+            if (searchQuery) {
+                searchInput.value = searchQuery;
+            }
+    
+            // Handle form submission
+            searchForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                performSearch();
+            });
+    
+            // Handle input with debounce for better performance
+            searchInput.addEventListener('input', (e) => {
+                if (searchTimeout) {
+                    clearTimeout(searchTimeout);
+                }
+    
+                // Add clear button when there's text
+                toggleClearButton(e.target.value);
+    
+                // Debounce search for better performance
+                searchTimeout = setTimeout(() => {
+                    performSearch();
+                }, 500); // Wait 500ms after last keystroke before searching
+            });
+    
+            // Create and manage clear button
+            const toggleClearButton = (value) => {
+                let clearButton = searchInput.parentElement.querySelector('.clear-search');
+                
+                if (value && !clearButton) {
+                    clearButton = document.createElement('button');
+                    clearButton.type = 'button';
+                    clearButton.className = 'clear-search absolute inset-y-0 right-0 pr-3 flex items-center';
+                    clearButton.innerHTML = `
+                        <svg class="h-5 w-5 text-gray-400 hover:text-gray-600" 
+                             viewBox="0 0 20 20" 
+                             fill="currentColor"
+                             aria-hidden="true">
+                            <path fill-rule="evenodd" 
+                                  d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" 
+                                  clip-rule="evenodd" />
+                        </svg>
+                    `;
+                    clearButton.addEventListener('click', clearSearch);
+                    searchInput.parentElement.appendChild(clearButton);
+                } else if (!value && clearButton) {
+                    clearButton.remove();
+                }
+            };
+    
+            // Clear search function
+            const clearSearch = () => {
+                searchInput.value = '';
+                toggleClearButton('');
+                performSearch();
+            };
+    
+            // Perform search function
+            const performSearch = () => {
+                const searchValue = searchInput.value.trim();
+                const currentUrl = new URL(window.location.href);
+                
+                // Update or remove search parameter
+                if (searchValue) {
+                    currentUrl.searchParams.set('search', searchValue);
+                } else {
+                    currentUrl.searchParams.delete('search');
+                }
+                
+                // Reset to first page when searching
+                currentUrl.searchParams.delete('page');
+                
+                // Show loading state
+                const searchButton = searchForm.querySelector('button[type="submit"]');
+                const originalButtonContent = searchButton.innerHTML;
+                searchButton.disabled = true;
+                searchButton.innerHTML = `
+                    <svg class="animate-spin h-5 w-5 text-indigo-600" 
+                         xmlns="http://www.w3.org/2000/svg" 
+                         fill="none" 
+                         viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                `;
+    
+                // Navigate to search results
+                window.location.href = currentUrl.toString();
+            };
+    
+            // Initialize clear button if there's an initial search value
+            toggleClearButton(searchInput.value);
+    
+            // Handle browser back/forward
+            window.addEventListener('popstate', () => {
+                const urlParams = new URLSearchParams(window.location.search);
+                const searchQuery = urlParams.get('search');
+                searchInput.value = searchQuery || '';
+                toggleClearButton(searchInput.value);
+            });
+        };
+    
+        // Initialize search functionality
+        initializeSearch();
     });
 </script>
 {% endblock %}

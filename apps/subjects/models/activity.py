@@ -123,6 +123,34 @@ class PromedioTrimestre(models.Model):
     class Meta:
         unique_together = ['detalle_matricula', 'trimestre']
 
+    @classmethod
+    def actualizar_promedio(cls, detalle_matricula, trimestre):
+        """
+        Actualiza o crea el promedio trimestral para un estudiante en una materia específica
+        """
+        # Obtener o crear el promedio trimestral
+        promedio_trimestre, created = cls.objects.get_or_create(
+            detalle_matricula=detalle_matricula,
+            trimestre=trimestre
+        )
+
+        # Obtener todas las calificaciones del trimestre
+        calificaciones = Calificacion.objects.filter(
+            detalle_matricula=detalle_matricula,
+            parcial__trimestre=trimestre
+        ).order_by('parcial__numero')
+
+        # Actualizar promedios parciales
+        for idx, calificacion in enumerate(calificaciones, 1):
+            if idx == 1:
+                promedio_trimestre.promedio_p1 = calificacion.promedio_final
+            elif idx == 2:
+                promedio_trimestre.promedio_p2 = calificacion.promedio_final
+
+        # Guardar los cambios
+        promedio_trimestre.save()
+        return promedio_trimestre
+
     def is_trimestre_completo(self):
         """Verifica si todas las notas del trimestre están completas"""
         return all([
@@ -178,6 +206,9 @@ class PromedioTrimestre(models.Model):
                     promedio_anual.promedio_t3 = promedio.promedio_final
 
         promedio_anual.save()
+
+    def __str__(self):
+        return f"{self.detalle_matricula.matricula.estudiante} - {self.detalle_matricula.materia} - {self.trimestre}"
 
 class PromedioAnual(models.Model):
     detalle_matricula = models.OneToOneField('students.DetalleMatricula', on_delete=models.CASCADE)

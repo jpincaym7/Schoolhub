@@ -4,6 +4,7 @@ from django.db import transaction
 
 from apps.students.models import DetalleMatricula, DetalleMatriculaTrimestre, Estudiante, Matricula
 from apps.subjects.models.academic import PeriodoAcademico
+from apps.subjects.models.activity import Calificacion, PromedioAnual, PromedioTrimestre
 from apps.subjects.models.subject import Materia
 
 logger = logging.getLogger(__name__)
@@ -155,18 +156,33 @@ class MatriculaSerializer(serializers.ModelSerializer):
         instance.save()
 
         if materias_ids is not None:
-            instance.detallematricula_set.exclude(
-                materia_id__in=materias_ids
-            ).delete()
+            # Get current subjects
+            detalles_actuales = instance.detallematricula_set.all()
+            materias_actuales = set(detalles_actuales.values_list('materia_id', flat=True))
+            materias_nuevas = set(materias_ids)
+            
+            # Find subjects that will be removed
+            materias_removidas = materias_actuales - materias_nuevas
+            
+            # Delete grades for removed subjects
+            for detalle in detalles_actuales.filter(materia_id__in=materias_removidas):
+                # Delete individual grades
+                Calificacion.objects.filter(detalle_matricula=detalle).delete()
+                
+                # Delete trimester averages
+                PromedioTrimestre.objects.filter(detalle_matricula=detalle).delete()
+                
+                # Delete yearly average
+                PromedioAnual.objects.filter(detalle_matricula=detalle).delete()
+            
+            # Remove subjects that are not in the new list
+            instance.detallematricula_set.filter(materia_id__in=materias_removidas).delete()
 
-            existing_materias = set(
-                instance.detallematricula_set.values_list('materia_id', flat=True)
-            )
-            for materia_id in materias_ids:
-                if materia_id not in existing_materias:
-                    DetalleMatricula.objects.create(
-                        matricula=instance,
-                        materia_id=materia_id
-                    )
+            # Add new subjects
+            for materia_id in materias_nuevas - materias_actuales:
+                DetalleMatricula.objects.create(
+                    matricula=instance,
+                    materia_id=materia_id
+                )
 
         return instance
