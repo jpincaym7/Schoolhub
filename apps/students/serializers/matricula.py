@@ -72,16 +72,19 @@ class MatriculaSerializer(serializers.ModelSerializer):
         periodo = data.get('periodo')
         materias_ids = data.get('materias_ids', [])
 
+        # Validate student course assignment
         if not estudiante.curso:
             raise serializers.ValidationError(
                 "El estudiante debe tener un curso asignado para poder matricularse."
             )
 
+        # Validate course trimesters
         if not estudiante.curso.trimestres.exists():
             raise serializers.ValidationError(
                 "El curso del estudiante debe tener trimestres asignados."
             )
         
+        # Validate existing enrollment
         existing_matricula = Matricula.objects.filter(
             estudiante=estudiante,
             periodo=periodo
@@ -91,25 +94,47 @@ class MatriculaSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 "El estudiante ya tiene una matrícula en este período."
             )
-        
+
+        # Validate subjects if provided
         if materias_ids:
+            # Validate subject existence
             materias = Materia.objects.filter(id__in=materias_ids)
             if len(materias) != len(materias_ids):
                 raise serializers.ValidationError(
                     "Una o más materias seleccionadas no existen."
                 )
             
-            already_enrolled = DetalleMatricula.objects.filter(
-                matricula__estudiante=estudiante,
-                matricula__periodo=periodo,
-                materia_id__in=materias_ids
-            )
-            
-            if already_enrolled.exists():
-                enrolled_subject_names = list(already_enrolled.values_list('materia__nombre', flat=True))
-                raise serializers.ValidationError(
-                    f"Ya estás matriculado en las siguientes materias: {', '.join(enrolled_subject_names)}"
+            # Validate duplicate enrollment
+            if not self.instance:  # Only check for new enrollments
+                already_enrolled = DetalleMatricula.objects.filter(
+                    matricula__estudiante=estudiante,
+                    matricula__periodo=periodo,
+                    materia_id__in=materias_ids
                 )
+                
+                if already_enrolled.exists():
+                    enrolled_subject_names = list(already_enrolled.values_list('materia__nombre', flat=True))
+                    raise serializers.ValidationError(
+                        f"Ya estás matriculado en las siguientes materias: {', '.join(enrolled_subject_names)}"
+                    )
+            
+            # Validate removal of subjects with grades (only for updates)
+            if self.instance:
+                current_subjects = set(self.instance.detallematricula_set.values_list('materia_id', flat=True))
+                new_subjects = set(materias_ids)
+                subjects_to_remove = current_subjects - new_subjects
+                
+                if subjects_to_remove:
+                    subjects_with_grades = DetalleMatricula.objects.filter(
+                        matricula=self.instance,
+                        materia_id__in=subjects_to_remove,
+                        calificacion__isnull=False
+                    ).distinct().values_list('materia__nombre', flat=True)
+                    
+                    if subjects_with_grades:
+                        raise serializers.ValidationError(
+                            f"No se pueden eliminar las siguientes materias porque tienen calificaciones registradas: {', '.join(subjects_with_grades)}"
+                        )
 
         return data
 
@@ -117,34 +142,15 @@ class MatriculaSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         materias_ids = validated_data.pop('materias_ids', [])
         
-        existing_matricula = Matricula.objects.filter(
-            estudiante=validated_data['estudiante'],
-            periodo=validated_data['periodo']
-        ).first()
-        
-        if existing_matricula:
-            matricula = existing_matricula
-            existing_details = matricula.detallematricula_set
-            existing_details.exclude(materia_id__in=materias_ids).delete()
-            
-            existing_materia_ids = set(existing_details.values_list('materia_id', flat=True))
-            for materia_id in materias_ids:
-                if materia_id not in existing_materia_ids:
-                    DetalleMatricula.objects.create(
-                        matricula=matricula,
-                        materia_id=materia_id
-                    )
-        else:
-            matricula = Matricula.objects.create(**validated_data)
-            # Modificado aquí: Cambio del formato del número de matrícula
-            matricula.numero_matricula = f"M_IC{matricula.id:06d}"
-            matricula.save()
+        matricula = Matricula.objects.create(**validated_data)
+        matricula.numero_matricula = f"M_IC{matricula.id:06d}"
+        matricula.save()
 
-            for materia_id in materias_ids:
-                DetalleMatricula.objects.create(
-                    matricula=matricula,
-                    materia_id=materia_id
-                )
+        for materia_id in materias_ids:
+            DetalleMatricula.objects.create(
+                matricula=matricula,
+                materia_id=materia_id
+            )
 
         return matricula
 
@@ -156,33 +162,19 @@ class MatriculaSerializer(serializers.ModelSerializer):
         instance.save()
 
         if materias_ids is not None:
-            # Get current subjects
             detalles_actuales = instance.detallematricula_set.all()
             materias_actuales = set(detalles_actuales.values_list('materia_id', flat=True))
             materias_nuevas = set(materias_ids)
             
-            # Find subjects that will be removed
-            materias_removidas = materias_actuales - materias_nuevas
-            
-            # Delete grades for removed subjects
-            for detalle in detalles_actuales.filter(materia_id__in=materias_removidas):
-                # Delete individual grades
-                Calificacion.objects.filter(detalle_matricula=detalle).delete()
-                
-                # Delete trimester averages
-                PromedioTrimestre.objects.filter(detalle_matricula=detalle).delete()
-                
-                # Delete yearly average
-                PromedioAnual.objects.filter(detalle_matricula=detalle).delete()
-            
-            # Remove subjects that are not in the new list
-            instance.detallematricula_set.filter(materia_id__in=materias_removidas).delete()
-
             # Add new subjects
             for materia_id in materias_nuevas - materias_actuales:
                 DetalleMatricula.objects.create(
                     matricula=instance,
                     materia_id=materia_id
                 )
+            
+            # Remove subjects (validation already done in validate method)
+            materias_removidas = materias_actuales - materias_nuevas
+            instance.detallematricula_set.filter(materia_id__in=materias_removidas).delete()
 
         return instance

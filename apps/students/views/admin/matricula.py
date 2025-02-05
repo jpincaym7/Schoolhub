@@ -33,48 +33,28 @@ class MatriculaViewSet(viewsets.ModelViewSet):
     queryset = Matricula.objects.all()
     serializer_class = MatriculaSerializer
 
-    def get_queryset(self):
-        queryset = super().get_queryset()
-        estudiante_id = self.request.query_params.get('estudiante')
-        periodo_id = self.request.query_params.get('periodo')
-        
-        if estudiante_id:
-            queryset = queryset.filter(estudiante_id=estudiante_id)
-        if periodo_id:
-            queryset = queryset.filter(periodo_id=periodo_id)
-
-        return queryset.select_related(
-            'estudiante',
-            'estudiante__usuario',
-            'periodo'
-        ).prefetch_related(
-            'detallematricula_set',
-            'detallematricula_set__materia'
-        )
-
     def destroy(self, request, *args, **kwargs):
         try:
             with transaction.atomic():
                 instance = self.get_object()
-                detalles = instance.detallematricula_set.all()
                 
-                # Delete all related grades and averages
-                for detalle in detalles:
-                    # Delete individual grades (Calificacion)
-                    Calificacion.objects.filter(detalle_matricula=detalle).delete()
-                    
-                    # Delete trimester averages (PromedioTrimestre)
-                    PromedioTrimestre.objects.filter(detalle_matricula=detalle).delete()
-                    
-                    # Delete yearly average (PromedioAnual)
-                    PromedioAnual.objects.filter(detalle_matricula=detalle).delete()
+                # Check if any subjects have grades
+                detalles_con_calificaciones = instance.detallematricula_set.filter(
+                    calificacion__isnull=False
+                ).distinct().values_list('materia__nombre', flat=True)
                 
-                # Finally, delete the enrollment and its details
-                instance.delete()  # This will also delete DetalleMatricula due to CASCADE
+                if detalles_con_calificaciones.exists():
+                    return Response(
+                        {
+                            'error': f"No se puede eliminar la matrícula porque las siguientes materias tienen calificaciones registradas: {', '.join(detalles_con_calificaciones)}"
+                        },
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
                 
+                instance.delete()
                 return Response(
                     {
-                        'message': 'Matrícula y calificaciones relacionadas eliminadas exitosamente'
+                        'message': 'Matrícula eliminada exitosamente'
                     },
                     status=status.HTTP_200_OK
                 )
@@ -105,18 +85,22 @@ class MatriculaViewSet(viewsets.ModelViewSet):
                 # Find subjects that will be removed
                 materias_removidas = materias_actuales - materias_nuevas
                 
-                # Delete grades for removed subjects
-                for detalle in detalles_actuales.filter(materia_id__in=materias_removidas):
-                    # Delete individual grades
-                    Calificacion.objects.filter(detalle_matricula=detalle).delete()
+                if materias_removidas:
+                    # Check if any of the subjects to be removed have grades
+                    materias_con_calificaciones = detalles_actuales.filter(
+                        materia_id__in=materias_removidas,
+                        calificacion__isnull=False
+                    ).distinct().values_list('materia__nombre', flat=True)
                     
-                    # Delete trimester averages
-                    PromedioTrimestre.objects.filter(detalle_matricula=detalle).delete()
-                    
-                    # Delete yearly average
-                    PromedioAnual.objects.filter(detalle_matricula=detalle).delete()
+                    if materias_con_calificaciones:
+                        return Response(
+                            {
+                                'error': f"No se pueden eliminar las siguientes materias porque tienen calificaciones registradas: {', '.join(materias_con_calificaciones)}"
+                            },
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
                 
-                # Remove all existing subjects that are not in the new list
+                # Remove subjects that are not in the new list
                 matricula.detallematricula_set.filter(materia_id__in=materias_removidas).delete()
                 
                 # Add new subjects
@@ -126,10 +110,10 @@ class MatriculaViewSet(viewsets.ModelViewSet):
                         materia_id=materia_id
                     )
 
-            return Response(
-                {'message': 'Materias y calificaciones actualizadas exitosamente'},
-                status=status.HTTP_200_OK
-            )
+                return Response(
+                    {'message': 'Materias actualizadas exitosamente'},
+                    status=status.HTTP_200_OK
+                )
         except Exception as e:
             return Response(
                 {'error': str(e)},
